@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penjelajah Luar Angkasa 3D - Edisi Proyektil</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            text-align: right;
+             z-index: 100;
+        }
+         #ui-bars-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            z-index: 100;
+         }
+         .bar-container {
+            width: 300px;
+            height: 30px;
+            background-color: rgba(50, 50, 50, 0.8);
+            border: 2px solid #888;
+            border-radius: 15px;
+            padding: 3px;
+            position: relative;
+         }
+         .bar-label {
+             position: absolute;
+             left: 10px;
+             top: 50%;
+             transform: translateY(-50%);
+             font-size: 0.9em;
+             color: white;
+             text-shadow: 1px 1px 2px black;
+             z-index: 1;
+         }
+        #fuel-bar, #health-bar {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.2s ease-in-out, background-color 0.5s ease;
+        }
+        #fuel-bar { background-color: #00ff00; }
+        #health-bar { background-color: #28a745; }
+         #refuel-message, #booster-message, #speed-boost-message {
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            display: none;
+            text-shadow: 2px 2px 4px #000;
+             z-index: 250;
+        }
+        #refuel-message { top: 50%; color: #ffcc00; }
+        #booster-message { top: 40%; color: #00ffff; }
+        #speed-boost-message { top: 60%; color: #ff00ff; }
+        h1, p { margin: 0 0 5px 0; }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 200;
+        }
+        .overlay h2 { font-size: 3em; margin-bottom: 20px; }
+        .overlay button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #333;
+            border: 2px solid #eee;
+            color: white;
+            border-radius: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 8px;
+            min-width: 200px;
+            transition: all 0.2s ease;
+        }
+        .overlay button:hover { background-color: #555; border-color: #ffc107; }
+        #game-over-screen button { background-color: #bb0000; }
+        #game-over-screen button:hover { background-color: #ff0000; }
+        #win-screen button { background-color: #0077bb; }
+        #win-screen button:hover { background-color: #00aaff; }
+        /* Gaya Hangar */
+        #hangar-screen {
+            justify-content: flex-start;
+            padding-top: 30px;
+            padding-bottom: 30px;
+            overflow-y: auto;
+        }
+        #ship-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 1400px;
+            padding: 20px 0;
+        }
+        .ship-card {
+            background-color: #222;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .ship-card.unlocked:hover {
+            border-color: #00ff00;
+            transform: translateY(-5px);
+            cursor: pointer;
+        }
+        .ship-card.locked {
+            background-color: #1a1a1a;
+            color: #666;
+        }
+        .ship-card.locked h3 { color: #aaa; }
+        .ship-card.affordable {
+            border-color: #ffc107;
+            cursor: pointer;
+        }
+        .ship-card.affordable:hover {
+            background-color: #332b00;
+            transform: translateY(-5px);
+        }
+        .ship-card h3 { margin-top: 0; margin-bottom: 10px; color: #eee; font-size: 1.1em; }
+        .ship-card p { font-size: 0.8em; margin-bottom: 10px; min-height: 50px; color: #ccc; }
+        .ship-card .cost { font-weight: bold; color: #ffc107; margin-bottom: 10px; }
+        .ship-card button { width: 100%; margin-top: 10px; font-size: 0.9em; padding: 10px; }
+        .ship-card .selected-badge { color: #00ff00; font-weight: bold; margin-top: 10px; display: block; }
+        /* Kontrol Mobile */
+        #mobile-controls { display: none; /* Sembunyikan default */ position: absolute; bottom: 20px; left: 20px; z-index: 300; flex-direction: row; justify-content: space-between; width: calc(100% - 40px); }
+        #joystick-area, #fire-button { background-color: rgba(50, 50, 50, 0.7); border: 2px solid #888; border-radius: 50%; }
+        #joystick-area { width: 150px; height: 150px; position: relative; }
+        #joystick-thumb { width: 60px; height: 60px; background-color: #eee; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        #fire-button { width: 100px; height: 100px; background-color: rgba(255, 0, 0, 0.7); border: 2px solid #ff0000; display: flex; justify-content: center; align-items: center; font-size: 1.5em; }
+        @media (max-width: 768px) {
+            #mobile-controls { display: flex; }
+            #info p:nth-of-type(3) { display: none; }
+            #ship-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+        }
+        /* Efek Pesawat Teman */
+        .companion-ship {
+            opacity: 0;
+            transition: opacity 1s ease;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .companion-ship.visible {
+            opacity: 0.8;
+        }
+        .companion-ship .body {
+            width: 20px;
+            height: 40px;
+            background: radial-gradient(circle, #00aaff, #0055aa);
+            border-radius: 50% 50% 30% 30%;
+            transform: rotateX(90deg);
+            position: absolute;
+            filter: blur(1px);
+        }
+        .companion-ship .wing-left, .companion-ship .wing-right {
+            width: 30px;
+            height: 8px;
+            background: linear-gradient(90deg, transparent, #00aaff, transparent);
+            position: absolute;
+            top: 16px;
+            border-radius: 4px;
+            filter: blur(1px);
+        }
+        .companion-ship .wing-left { left: -30px; transform: skewY(-15deg); }
+        .companion-ship .wing-right { right: -30px; transform: skewY(15deg); }
+        .companion-ship .glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,170,255,0.6), transparent 70%);
+            border-radius: 50%;
+            top: 0;
+            left: 0;
+            animation: pulseGlow 1.5s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            from { opacity: 0.4; }
+            to { opacity: 0.9; }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1 id="mission-title">Misi: Jupiter</h1>
+        <p>Tugas: Capai target, hancurkan asteroid!</p>
+        <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Gerak), Spasi (Tembak)</p>
+        <p id="distance-info">Jarak ke Target: ...</p>
+    </div>
+    <div id="stats">
+        <p>Poin: <span id="points">0</span></p>
+        <p>Asteroid Dihancurkan: <span id="score">0</span></p>
+    </div>
+    <div id="ui-bars-container">
+        <div id="health-container" class="bar-container">
+            <div class="bar-label">HEALTH</div>
+            <div id="health-bar"></div>
+        </div>
+        <div id="fuel-container" class="bar-container">
+            <div class="bar-label">FUEL</div>
+            <div id="fuel-bar"></div>
+        </div>
+    </div>
+    <p id="refuel-message">MENGISI BAHAN BAKAR</p>
+    <p id="booster-message">BOOSTER AKTIF!</p>
+    <p id="speed-boost-message">PENINGKATAN KECEPATAN!</p>
+    <div id="start-screen" class="overlay">
+        <h2>PILIH LEVEL KESULITAN</h2>
+        <button onclick="selectDifficulty('easy')">Easy (60k)</button>
+        <button onclick="selectDifficulty('medium')">Medium (80k)</button>
+        <button onclick="selectDifficulty('hard')">Hard (100k)</button>
+        <button onclick="selectDifficulty('hardcore')">Hardcore (120k)</button>
+        <button onclick="selectDifficulty('impossible')">Impossible (200/poin)</button>
+        <button onclick="selectDifficulty('legends-senior')">Legends Senior (439/poin)</button>
+        <button onclick="selectDifficulty('mystery-adventurer')">Petualang Misteri (648/poin)</button>
+    </div>
+    <div id="hangar-screen" class="overlay" style="display: none;">
+        <h2>HANGGAR PESAWAT</h2>
+        <p>Pilih pesawat Anda. Selesaikan misi untuk mendapatkan poin dan membuka pesawat baru!</p>
+        <div id="ship-grid">
+            <!-- Kartu pesawat akan dibuat oleh JavaScript -->
+        </div>
+    </div>
+    <div id="game-over-screen" class="overlay" style="display: none;">
+        <h2>GAME OVER</h2><p id="game-over-reason">Anda menabrak asteroid!</p><button onclick="location.reload()">Coba Lagi</button>
+    </div>
+     <div id="win-screen" class="overlay" style="display: none;">
+        <h2>MISI BERHASIL!</h2><p id="win-message">Anda telah sampai di Jupiter dengan selamat!</p><button onclick="location.reload()">Main Lagi</button>
+    </div>
+    <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div><div id="fire-button">TEMBAK</div></div>
+
+    <!-- Pesawat Teman (NPC) -->
+    <div id="companion-ship" class="companion-ship" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 50;">
+        <div class="body"></div>
+        <div class="wing-left"></div>
+        <div class="wing-right"></div>
+        <div class="glow"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Inisialisasi Three.js
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.00005);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // State Game
+        let isGameStarted = false, isGameOver = false, score = 0, currentLevel = 'easy';
+        let shipGroup, starField;
+        const asteroids = [], lasers = [], boosters = [], meteors = [];
+        
+        // Sistem Health, Bahan Bakar & Booster
+        let maxHealth = 100, currentHealth = maxHealth;
+        let maxFuel = 100, currentFuel = maxFuel, fuelConsumptionRate = 0.1, refuelRate = 0.5, isRefueling = false;
+        let isBoosterActive = false, boosterDuration = 0, boosterSpeedMultiplier = 1, boosterFuelRate = 0;
+        let healthRegenInterval;
+
+        // Data Player (disimpan di localStorage)
+        let playerData = {
+            points: 0,
+            unlockedShips: [0], // Mulai dengan pesawat ID 0 terbuka
+            selectedShipId: 0,
+            meteorDamageMultiplier: 1.0
+        };
+
+        // UI Elements
+        const missionTitle = document.getElementById('mission-title'), distanceInfo = document.getElementById('distance-info');
+        const scoreInfo = document.getElementById('score'), pointsInfo = document.getElementById('points');
+        const fuelBar = document.getElementById('fuel-bar'), healthBar = document.getElementById('health-bar');
+        const refuelMessage = document.getElementById('refuel-message'), boosterMessage = document.getElementById('booster-message'), speedBoostMessage = document.getElementById('speed-boost-message');
+
+        // --- DATABASE PESAWAT ---
+        const SPACESHIPS = [];
+        const baseShips = [
+            // Tier 0
+            {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},
+            // Tier 1
+            {id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.'},
+            {id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},
+            {id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},
+            {id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},
+            // Tier 2
+            {id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},
+            {id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},
+            {id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},
+            {id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},
+            {id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},
+            {id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},
+            {id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},
+            {id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},
+            // Tier 3
+            {id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},
+            {id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},
+            {id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},
+            {id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},
+            {id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},
+            {id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},
+            {id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},
+            {id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},
+            // Tier 4
+            {id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},
+            {id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},
+            {id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},
+            {id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},
+            {id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},
+            {id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},
+            {id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},
+            {id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},
+            // Tier 5
+            {id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},
+            {id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},
+            {id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},
+        ];
+
+        // Generate stats dynamically
+        baseShips.forEach((ship, index) => {
+            const tier = Math.floor(index / 5);
+            SPACESHIPS.push({
+                ...ship,
+                stats: {
+                    health: 45 + (index * 25) + (tier * 100),
+                    maxSpeed: 15 + (index * 0.8) + (tier * 2),
+                    fuel: 200 + (index * 20) + (tier * 150),
+                    accel: 0.15 + (index * 0.008) + (tier * 0.02),
+                    turn: 0.03 + (index * 0.0005) + (tier * 0.002),
+                    laserSpeed: 50 + (index * 3) + (tier * 10),
+                    projectile: getProjectileForShip(index)
+                }
+            });
+        });
+
+        function getProjectileForShip(id) {
+            const type = id % 7;
+            if (id === 0) return { type: 'standard', cooldown: 450 };
+            if (type === 1) return { type: 'double', cooldown: 600 - (id*5) };
+            if (type === 2) return { type: 'spread', count: 3, angle: 0.2 + (id*0.01), cooldown: 700 - (id*5) };
+            if (type === 3) return { type: 'burst', count: 3, delay: 80 - id, cooldown: 750 - (id*5) };
+            if (type === 4) return { type: 'railgun', cooldown: 850 - (id*5), pierce: true };
+            if (type === 5) return { type: 'spread', count: 5, angle: 0.3 + (id*0.01), cooldown: 800 - (id*5) };
+            if (type === 6) return { type: 'burst', count: 5, delay: 70 - id, cooldown: 900 - (id*5) };
+            return { type: 'standard', cooldown: 400 - (id*5) };
+        }
+
+        const DIFFICULTY_SETTINGS = {
+            easy:       { asteroidCount: 1000,  asteroidSpeed: 0.4, baseDistance: 60000, boosterSpawnRate: 3000, pointMultiplier: 1.0, meteorInterval: 5000, meteorDmg: 39, asteroidDmg: 20 },
+            medium:     { asteroidCount: 2000, asteroidSpeed: 0.5, baseDistance: 80000, boosterSpawnRate: 2500, pointMultiplier: 1.5, meteorInterval: 4000, meteorDmg: 132, asteroidDmg: 66 },
+            hard:       { asteroidCount: 4000, asteroidSpeed: 0.6, baseDistance: 100000, boosterSpawnRate: 2000, pointMultiplier: 2.0, meteorInterval: 3000, meteorDmg: 164, asteroidDmg: 82 },
+            hardcore:   { asteroidCount: 6000, asteroidSpeed: 0.8, baseDistance: 120000, boosterSpawnRate: 1500, pointMultiplier: 2.5, meteorInterval: 2000, meteorDmg: 243, asteroidDmg: 122 },
+            impossible: { asteroidCount: 8000, asteroidSpeed: 1.0, baseDistance: 180000, boosterSpawnRate: 1200, pointMultiplier: 200, meteorInterval: 1500, meteorDmg: 350, asteroidDmg: 175 },
+            'legends-senior': { asteroidCount: 10000, asteroidSpeed: 1.3, baseDistance: 220000, boosterSpawnRate: 1000, pointMultiplier: 439, meteorInterval: 1200, meteorDmg: 420, asteroidDmg: 210 },
+            'mystery-adventurer': { asteroidCount: 12000, asteroidSpeed: 1.6, baseDistance: 280000, boosterSpawnRate: 800, pointMultiplier: 648, meteorInterval: 1000, meteorDmg: 500, asteroidDmg: 250 }
+        };
+
+        const BOOSTER_SETTINGS = { 
+            easy: { duration: 5, fuelRate: 0.2 }, 
+            medium: { duration: 10, fuelRate: 0.3 }, 
+            hard: { duration: 15, fuelRate: 0.4 }, 
+            hardcore: { duration: 20, fuelRate: 0.5 }, 
+            impossible: { duration: 25, fuelRate: 0.6 },
+            'legends-senior': { duration: 30, fuelRate: 0.7 },
+            'mystery-adventurer': { duration: 35, fuelRate: 0.8 }
+        };
+
+        const MISSION_TARGETS = [
+            { name: 'Jupiter', travelDistance: 0, object: null, speedBoost: 1 }, 
+            { name: 'Pluto', travelDistance: 40000, object: null, speedBoost: 1 },
+            { name: 'Andromeda', travelDistance: 164353, object: null, speedBoost: 1 },
+            { name: 'Triangulum', travelDistance: 262965, object: null, speedBoost: 2 },
+            { name: 'Messier 81', travelDistance: 420744, object: null, speedBoost: 3, companionTrigger: true }, // <-- TRIGGER UNTUK PESAWAT TEMAN
+            { name: 'Kepler-452b', travelDistance: 673190, object: null, speedBoost: 4 },
+            { name: 'Proxima Centauri b', travelDistance: 1077104, object: null, speedBoost: 5 },
+            { name: 'TOI-700 d', travelDistance: 1723366, object: null, speedBoost: 10 }
+        ];
+
+        let currentMissionIndex = 0, currentTarget = MISSION_TARGETS[currentMissionIndex];
+        let maxSpeed, acceleration, deceleration = 0.98, turnSpeed, laserFireSpeed, currentProjectileStats;
+        let lastFireTime = 0;
+
+        // --- PESAWAT TEMAN (NPC) ---
+        let companionShip = null; // Referensi objek Three.js
+        let companionVisible = false; // Apakah pesawat teman sudah muncul?
+
+        function loadPlayerData() {
+            const savedData = localStorage.getItem('spaceExplorerData');
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                playerData.points = parsedData.points || 0;
+                playerData.unlockedShips = parsedData.unlockedShips || [0];
+                playerData.selectedShipId = parsedData.selectedShipId || 0;
+                playerData.meteorDamageMultiplier = parsedData.meteorDamageMultiplier || 1.0;
+            }
+            pointsInfo.innerText = playerData.points.toLocaleString();
+        }
+
+        function savePlayerData() {
+            localStorage.setItem('spaceExplorerData', JSON.stringify(playerData));
+            pointsInfo.innerText = playerData.points.toLocaleString();
+        }
+
+        function init() {
+            loadPlayerData();
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            pointLight.position.set(200, 200, 200);
+            scene.add(pointLight);
+            createScenery();
+            setupJoystick();
+        }
+
+        function selectDifficulty(difficulty) {
+            currentLevel = difficulty;
+            document.getElementById('start-screen').style.display = 'none';
+            showHangar();
+        }
+
+        function showHangar() {
+            const hangarScreen = document.getElementById('hangar-screen');
+            const shipGrid = document.getElementById('ship-grid');
+            shipGrid.innerHTML = '';
+            SPACESHIPS.forEach(ship => {
+                const card = document.createElement('div');
+                card.classList.add('ship-card');
+                const isUnlocked = playerData.unlockedShips.includes(ship.id);
+                const canAfford = playerData.points >= ship.cost;
+                let actionHtml = '';
+                if (isUnlocked) {
+                    card.classList.add('unlocked');
+                    card.onclick = () => selectShip(ship.id); 
+                    actionHtml = `<p style="color: #00ffaa; font-size: 0.9em; margin-top: 10px; font-weight: bold;">-- KLIK UNTUK MAIN --</p>`;
+                    if (playerData.selectedShipId === ship.id) {
+                        card.style.borderColor = '#00ffaa'; 
+                    }
+                } else {
+                    card.classList.add('locked');
+                    if (canAfford) {
+                        card.classList.add('affordable');
+                        card.onclick = () => buyShip(ship.id);
+                        actionHtml = `<button style="background-color: #ffc107; color: black;">BELI</button>`;
+                    } else {
+                        actionHtml = `<button disabled>TERKUNCI</button>`;
+                    }
+                }
+                card.innerHTML = `
+                    <div>
+                        <h3>${ship.name} (HP: ${ship.stats.health})</h3>
+                        <p>${ship.desc}</p>
+                        ${!isUnlocked ? `<p class="cost">Poin: ${ship.cost.toLocaleString()}</p>` : ''}
+                    </div>
+                    <div>${actionHtml}</div>
+                `;
+                shipGrid.appendChild(card);
+            });
+            hangarScreen.style.display = 'flex';
+        }
+
+        function buyShip(shipId) {
+            const ship = SPACESHIPS.find(s => s.id === shipId);
+            if (ship && playerData.points >= ship.cost) {
+                playerData.points -= ship.cost;
+                playerData.unlockedShips.push(ship.id);
+                playerData.meteorDamageMultiplier *= 1.5; // Tingkatkan damage setiap beli
+                savePlayerData();
+                showHangar(); 
+            }
+        }
+
+        function selectShip(shipId) {
+             playerData.selectedShipId = shipId;
+             savePlayerData();
+             document.getElementById('hangar-screen').style.display = 'none';
+             startGame();
+        }
+
+        function startGame() {
+            isGameStarted = true;
+            createPlayer(playerData.selectedShipId);
+            const settings = DIFFICULTY_SETTINGS[currentLevel];
+            MISSION_TARGETS[0].travelDistance = settings.baseDistance;
+            MISSION_TARGETS[0].object.position.z = -settings.baseDistance;
+            createAsteroids(settings.asteroidCount, settings.asteroidSpeed, settings.baseDistance);
+            setInterval(() => {
+                if (isGameStarted && !isGameOver) createBooster();
+            }, settings.boosterSpawnRate);
+            setInterval(() => {
+                if(isGameStarted && !isGameOver) createMeteor();
+            }, settings.meteorInterval);
+            clearInterval(healthRegenInterval); // Hapus timer lama jika ada
+            healthRegenInterval = setInterval(() => {
+                if (isGameStarted && !isGameOver) {
+                    currentHealth = Math.min(maxHealth, currentHealth + 29);
+                }
+            }, 420000); // 7 menit
+            animate();
+        }
+
+        function createPlayer(shipId) {
+            const shipData = SPACESHIPS.find(s => s.id === shipId) || SPACESHIPS[0];
+            maxHealth = shipData.stats.health;
+            currentHealth = maxHealth;
+            maxSpeed = shipData.stats.maxSpeed;
+            maxFuel = shipData.stats.fuel;
+            fuelConsumptionRate = (1 / shipData.stats.fuel) * 15;
+            acceleration = shipData.stats.accel;
+            turnSpeed = shipData.stats.turn;
+            laserFireSpeed = shipData.stats.laserSpeed;
+            currentProjectileStats = shipData.stats.projectile;
+            currentFuel = maxFuel;
+            shipGroup = new THREE.Group();
+            let bodyGeo;
+            const bodyMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()), flatShading: true });
+            const type = shipId % 5;
+            if (type === 0) bodyGeo = new THREE.ConeGeometry(0.5, 2, 8);
+            else if (type === 1) bodyGeo = new THREE.BoxGeometry(1, 1, 2.5);
+            else if (type === 2) bodyGeo = new THREE.DodecahedronGeometry(0.8);
+            else if (type === 3) bodyGeo = new THREE.CylinderGeometry(0.4, 0.6, 2.2, 6);
+            else bodyGeo = new THREE.OctahedronGeometry(0.9);
+            const shipBody = new THREE.Mesh(bodyGeo, bodyMat);
+            shipBody.rotation.x = Math.PI / 2;
+            shipGroup.add(shipBody);
+            const wingGeo = new THREE.BoxGeometry(2.5, 0.2, 1);
+            const wingMat = new THREE.MeshPhongMaterial({ color: 0xbb0000 });
+            const leftWing = new THREE.Mesh(wingGeo, wingMat);
+            leftWing.position.set(-1.5, 0, -0.2);
+            shipGroup.add(leftWing);
+            const rightWing = leftWing.clone();
+            rightWing.position.set(1.5, 0, -0.2);
+            shipGroup.add(rightWing);
+            scene.add(shipGroup);
+            camera.position.set(0, 3, 10);
+        }
+
+        function createScenery() {
+            const starVertices = [];
+            for (let i = 0; i < 300000; i++) {
+                const x = (Math.random() - 0.5) * 5000000, y = (Math.random() - 0.5) * 5000000, z = (Math.random() - 0.5) * 5000000;
+                starVertices.push(x, y, z);
+            }
+            const starsGeometry = new THREE.BufferGeometry();
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            starField = new THREE.Points(starsGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 3.5 }));
+            scene.add(starField);
+
+            // Buat objek misi
+            MISSION_TARGETS[0].object = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), new THREE.MeshPhongMaterial({ color: 0xE8A763 }));
+            MISSION_TARGETS[1].object = new THREE.Mesh(new THREE.SphereGeometry(20, 32, 32), new THREE.MeshPhongMaterial({ color: 0xAA6666 }));
+            MISSION_TARGETS[2].object = new THREE.Mesh(new THREE.DodecahedronGeometry(1000, 2), new THREE.MeshPhongMaterial({ color: 0xAAAAFF, wireframe: true }));
+            MISSION_TARGETS[3].object = new THREE.Mesh(new THREE.DodecahedronGeometry(1500, 2), new THREE.MeshPhongMaterial({ color: 0xFF5733, wireframe: true }));
+            MISSION_TARGETS[4].object = new THREE.Mesh(new THREE.TorusKnotGeometry(2000, 400, 100, 16), new THREE.MeshPhongMaterial({ color: 0x8a2be2, wireframe: true }));
+            MISSION_TARGETS[5].object = new THREE.Mesh(new THREE.SphereGeometry(2500, 64, 64), new THREE.MeshPhongMaterial({ color: 0x3cb371 }));
+            MISSION_TARGETS[6].object = new THREE.Mesh(new THREE.SphereGeometry(3000, 64, 64), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
+            MISSION_TARGETS[7].object = new THREE.Mesh(new THREE.SphereGeometry(3500, 64, 64), new THREE.MeshPhongMaterial({ color: 0x33b3b3 }));
+
+            MISSION_TARGETS.forEach(target => scene.add(target.object));
+        }
+
+        function advanceMission() {
+            const basePoints = DIFFICULTY_SETTINGS[currentLevel].pointMultiplier;
+            const pointsGained = Math.round(basePoints);
+            playerData.points += pointsGained;
+            savePlayerData();
+
+            if (currentMissionIndex + 1 < MISSION_TARGETS.length && MISSION_TARGETS[currentMissionIndex + 1].speedBoost > 1) {
+                maxSpeed *= MISSION_TARGETS[currentMissionIndex + 1].speedBoost;
+                speedBoostMessage.style.display = 'block';
+                setTimeout(() => { speedBoostMessage.style.display = 'none'; }, 3000);
+            }
+
+            currentMissionIndex++;
+            if (currentMissionIndex < MISSION_TARGETS.length) {
+                currentTarget = MISSION_TARGETS[currentMissionIndex];
+                updateMissionUI();
+                speed = 0;
+                currentFuel = maxFuel; 
+                asteroids.forEach(a => scene.remove(a));
+                asteroids.length = 0;
+                meteors.forEach(m => scene.remove(m));
+                meteors.length = 0;
+                const distance = currentTarget.travelDistance;
+                currentTarget.object.position.z = shipGroup.position.z - distance;
+                createAsteroids(DIFFICULTY_SETTINGS[currentLevel].asteroidCount, DIFFICULTY_SETTINGS[currentLevel].asteroidSpeed, distance);
+
+                // Jika misi sekarang adalah Messier 81, aktifkan pesawat teman
+                if (currentTarget.companionTrigger && !companionVisible) {
+                    activateCompanionShip();
+                }
+            } else {
+                isGameOver = true;
+                document.getElementById('win-screen').style.display = 'flex';
+                document.getElementById('win-message').innerText = `Selamat! Anda telah sampai di Jupiter dengan selamat!`;
+            }
+        }
+
+        function updateMissionUI() {
+            missionTitle.innerText = `Misi: ${currentTarget.name}`;
+            distanceInfo.innerText = `Jarak ke ${currentTarget.name}: ${Math.round(shipGroup.position.distanceTo(currentTarget.object.position))}`;
+        }
+
+        function createAsteroids(count, speedMultiplier, targetDistance) {
+            const asteroidGeometry = new THREE.IcosahedronGeometry(1, 0); 
+            const asteroidMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513, flatShading: true });
+            const rangeX = targetDistance * 0.1, rangeY = targetDistance * 0.1, rangeZ = targetDistance * 1.5;
+            for (let i = 0; i < count; i++) {
+                const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+                asteroid.position.set((Math.random() - 0.5) * rangeX + shipGroup.position.x, (Math.random() - 0.5) * rangeY + shipGroup.position.y, (Math.random() - 0.5) * rangeZ + shipGroup.position.z);
+                const scale = Math.random() * 40 + 15;
+                asteroid.scale.set(scale, scale, scale);
+                asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
+                asteroids.push(asteroid);
+                scene.add(asteroid);
+            }
+        }
+
+        function createMeteor() {
+            if (!shipGroup) return;
+            const meteorGeometry = new THREE.SphereGeometry(15, 8, 8);
+            const meteorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffa500,
+                emissive: 0xff4500,
+                flatShading: true 
+            });
+            const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
+            const spawnX = shipGroup.position.x + (Math.random() - 0.5) * 400;
+            const spawnY = shipGroup.position.y + 600 + (Math.random() * 200);
+            const spawnZ = shipGroup.position.z - 1000 - (Math.random() * 1000);
+            meteor.position.set(spawnX, spawnY, spawnZ);
+            meteor.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                -15 - Math.random() * 10,
+                (Math.random() - 0.5) * 4
+            );
+            meteors.push(meteor);
+            scene.add(meteor);
+        }
+
+        function createBooster() { 
+            const boosterGeometry = new THREE.TorusGeometry(20, 5, 16, 100);
+            const boosterMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
+            const booster = new THREE.Mesh(boosterGeometry, boosterMaterial);
+            const range = MISSION_TARGETS[0].travelDistance * 0.8;
+            booster.position.set((Math.random() - 0.5) * range + shipGroup.position.x, (Math.random() - 0.5) * range + shipGroup.position.y, (Math.random() * -range) + shipGroup.position.z);
+            booster.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5);
+            boosters.push(booster);
+            scene.add(booster);
+        }
+
+        function updateBoosters() { 
+            for (let i = boosters.length - 1; i >= 0; i--) {
+                const booster = boosters[i];
+                booster.position.add(booster.velocity);
+                booster.rotation.x += 0.05;
+                booster.rotation.y += 0.05;
+                if (shipGroup.position.distanceTo(booster.position) < 20) {
+                    activateBooster();
+                    scene.remove(booster);
+                    boosters.splice(i, 1);
+                }
+                if (booster.position.distanceTo(shipGroup.position) > 3000) {
+                    scene.remove(booster);
+                    boosters.splice(i, 1);
+                }
+            }
+        }
+
+        function activateBooster() { 
+            if (isBoosterActive) return;
+            isBoosterActive = true;
+            boosterMessage.style.display = 'block';
+            const settings = BOOSTER_SETTINGS[currentLevel];
+            boosterDuration = settings.duration * 1000;
+            boosterFuelRate = settings.fuelRate;
+            boosterSpeedMultiplier = 2;
+            setTimeout(() => { isBoosterActive = false; boosterMessage.style.display = 'none'; boosterSpeedMultiplier = 1; boosterFuelRate = 0; }, boosterDuration);
+        }
+
+        const keyboard = {};
+        let speed = 0.0;
+        const verticalSpeed = 0.5;
+        const joystickArea = document.getElementById('joystick-area'), joystickThumb = document.getElementById('joystick-thumb'), fireButton = document.getElementById('fire-button');
+        let joystickActive = false;
+        const joystickState = { x: 0, y: 0 };
+        const joystickRadius = 75;
+
+        function setupJoystick() {
+             function handleStart(e) { e.preventDefault(); joystickActive = true; const rect = joystickArea.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; updateJoystickPosition(clientX - rect.left, clientY - rect.top, rect); }
+             function handleMove(e) { if (!joystickActive) return; e.preventDefault(); const rect = joystickArea.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; updateJoystickPosition(clientX - rect.left, clientY - rect.top, rect); }
+             function handleEnd() { joystickActive = false; joystickThumb.style.transform = 'translate(-50%, -50%)'; joystickState.x = 0; joystickState.y = 0; }
+             function updateJoystickPosition(x, y, rect) { const centerX = rect.width / 2, centerY = rect.height / 2; const dx = x - centerX, dy = y - centerY; const distance = Math.sqrt(dx * dx + dy * dy); if (distance > joystickRadius) { const angle = Math.atan2(dy, dx); joystickState.x = Math.cos(angle); joystickState.y = Math.sin(angle); joystickThumb.style.left = `${centerX + joystickState.x * joystickRadius}px`; joystickThumb.style.top = `${centerY + joystickState.y * joystickRadius}px`; } else { joystickState.x = dx / joystickRadius; joystickState.y = dy / joystickRadius; joystickThumb.style.left = `${x}px`; joystickThumb.style.top = `${y}px`; } }
+             joystickArea.addEventListener('touchstart', handleStart); joystickArea.addEventListener('touchmove', handleMove); joystickArea.addEventListener('touchend', handleEnd);
+             joystickArea.addEventListener('mousedown', handleStart); document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleEnd);
+             fireButton.addEventListener('touchend', (e) => { e.preventDefault(); fireProjectile(); }); fireButton.addEventListener('click', fireProjectile);
+        }
+
+        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
+        window.addEventListener('keydown', (e) => { if (e.key === ' ' || e.code === 'Space') fireProjectile(); });
+
+        function updateShipMovement() {
+            if (isRefueling) { speed *= 0.9; shipGroup.translateZ(speed); return; }
+            if (keyboard['w'] && currentFuel > 0) { speed = Math.min(speed + acceleration * boosterSpeedMultiplier, maxSpeed * boosterSpeedMultiplier); currentFuel -= (fuelConsumptionRate - boosterFuelRate); }
+            if (keyboard['s']) { speed = Math.max(speed - acceleration, -maxSpeed / 2); }
+            if (keyboard['arrowleft']) { shipGroup.rotation.y += turnSpeed; }
+            if (keyboard['arrowright']) { shipGroup.rotation.y -= turnSpeed; }
+            if (joystickState.x !== 0) { shipGroup.rotation.y += joystickState.x * turnSpeed * -2; }
+            if (keyboard['arrowup']) { shipGroup.translateY(verticalSpeed); }
+            if (keyboard['arrowdown']) { shipGroup.translateY(-verticalSpeed); }
+            if (joystickState.y !== 0) { shipGroup.translateY(-joystickState.y * verticalSpeed * 2); }
+            speed *= deceleration;
+            shipGroup.translateZ(speed);
+            const maxY = 2000;
+            if (shipGroup.position.y > maxY) shipGroup.position.y = maxY;
+            if (shipGroup.position.y < -maxY) shipGroup.position.y = -maxY;
+            if (currentFuel <= 0 && !isRefueling) { currentFuel = 0; isRefueling = true; refuelMessage.style.display = 'block'; }
+        }
+
+        function createBaseLaser(isRailgun = false) {
+             if (isRailgun) {
+                return new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 15, 4), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+             }
+             return new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        }
+
+        function launchProjectile(laser, direction, offset = new THREE.Vector3(0,0,0)) {
+            laser.rotation.copy(shipGroup.rotation);
+            laser.rotateX(Math.PI / 2);
+            const worldOffset = offset.clone().applyQuaternion(shipGroup.quaternion);
+            laser.position.copy(shipGroup.position).add(worldOffset);
+            laser.velocity = direction.clone().multiplyScalar(-laserFireSpeed); 
+            laser.isPiercing = currentProjectileStats.pierce || false;
+            lasers.push(laser);
+            scene.add(laser);
+        }
+
+        function fireProjectile() {
+            if (isRefueling || isGameOver) return;
+            const now = Date.now();
+            if (now - lastFireTime < currentProjectileStats.cooldown) {
+                return;
+            }
+            lastFireTime = now;
+            const mainDirection = new THREE.Vector3();
+            shipGroup.getWorldDirection(mainDirection);
+            switch(currentProjectileStats.type) {
+                case 'double':
+                    const rightVec = new THREE.Vector3().crossVectors(mainDirection, shipGroup.up).normalize().multiplyScalar(0.5);
+                    launchProjectile(createBaseLaser(), mainDirection, rightVec.clone().negate());
+                    launchProjectile(createBaseLaser(), mainDirection, rightVec);
+                    break;
+                case 'spread':
+                    const spreadCount = currentProjectileStats.count;
+                    const totalAngle = currentProjectileStats.angle;
+                    for (let i = 0; i < spreadCount; i++) {
+                        const fraction = i / (spreadCount - 1);
+                        const angle = (fraction - 0.5) * totalAngle;
+                        const spreadDirection = mainDirection.clone().applyAxisAngle(shipGroup.up, angle);
+                        launchProjectile(createBaseLaser(), spreadDirection);
+                    }
+                    break;
+                case 'burst':
+                    for (let i = 0; i < currentProjectileStats.count; i++) {
+                        setTimeout(() => {
+                           if (!isGameOver) launchProjectile(createBaseLaser(), mainDirection);
+                        }, i * currentProjectileStats.delay);
+                    }
+                    break;
+                case 'railgun':
+                     launchProjectile(createBaseLaser(true), mainDirection);
+                     break;
+                case 'standard':
+                default:
+                    launchProjectile(createBaseLaser(), mainDirection);
+                    break;
+            }
+        }
+
+        function updateLasers() {
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                laser.position.add(laser.velocity);
+                const distance = laser.isPiercing ? 8000 : 3000;
+                if (laser.position.distanceTo(shipGroup.position) > distance) {
+                    scene.remove(laser);
+                    lasers.splice(i, 1);
+                }
+            }
+        }
+
+        function updateUIBars() {
+            // Fuel Bar
+            if (isRefueling) {
+                currentFuel += refuelRate;
+                if (currentFuel >= maxFuel) { currentFuel = maxFuel; isRefueling = false; refuelMessage.style.display = 'none'; }
+            }
+            fuelBar.style.width = `${(currentFuel / maxFuel) * 100}%`;
+            fuelBar.style.backgroundColor = currentFuel / maxFuel < 0.25 ? '#ff0000' : '#00ff00';
+            // Health Bar
+            const healthPercent = currentHealth / maxHealth;
+            healthBar.style.width = `${healthPercent * 100}%`;
+            if (healthPercent < 0.25) {
+                healthBar.style.backgroundColor = '#dc3545'; // Merah
+            } else if (healthPercent < 0.6) {
+                healthBar.style.backgroundColor = '#ffc107'; // Kuning
+            } else {
+                healthBar.style.backgroundColor = '#28a745'; // Hijau
+            }
+        }
+
+        function takeDamage(amount, source) {
+            if (isGameOver) return;
+            currentHealth -= amount;
+            if (currentHealth <= 0) {
+                currentHealth = 0;
+                isGameOver = true;
+                document.getElementById('game-over-reason').innerText = `Kesehatan habis setelah menabrak ${source}!`;
+                document.getElementById('game-over-screen').style.display = 'flex';
+            }
+        }
+
+        function checkCollisions() {
+            const settings = DIFFICULTY_SETTINGS[currentLevel];
+            // Kolisi Pesawat dengan Asteroid
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                 if (shipGroup.position.distanceTo(asteroid.position) < asteroid.scale.x + 1) {
+                    takeDamage(settings.asteroidDmg, 'asteroid');
+                    scene.remove(asteroid);
+                    asteroids.splice(i, 1);
+                    if (isGameOver) return;
+                }
+            }
+            // Kolisi Pesawat dengan Meteor
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const meteor = meteors[i];
+                if(shipGroup.position.distanceTo(meteor.position) < 15 + 1) { // 15 adalah radius meteor
+                    const finalDamage = settings.meteorDmg * playerData.meteorDamageMultiplier;
+                    takeDamage(finalDamage, 'meteor');
+                    scene.remove(meteor);
+                    meteors.splice(i, 1);
+                    if (isGameOver) return;
+                }
+            }
+            // Kolisi Laser dengan Asteroid
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                if (!laser) continue;
+                let laserRemoved = false;
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    const asteroid = asteroids[j];
+                    if (laser.position.distanceTo(asteroid.position) < asteroid.scale.x) {
+                        scene.remove(asteroid); 
+                        asteroids.splice(j, 1);
+                        score++; 
+                        scoreInfo.innerText = score;
+                        if (!laser.isPiercing) {
+                           scene.remove(laser); 
+                           lasers.splice(i, 1);
+                           laserRemoved = true;
+                           break;
+                        }
+                    }
+                }
+                if(laserRemoved) continue;
+            }
+            // Cek Jarak ke Target Misi
+            const distanceToTarget = shipGroup.position.distanceTo(currentTarget.object.position);
+            distanceInfo.innerText = `Jarak ke ${currentTarget.name}: ${Math.round(distanceToTarget)}`;
+            if (distanceToTarget < 500) {
+                advanceMission();
+            }
+        }
+
+        function updateScenery() {
+            starField.rotation.y += 0.00002;
+            MISSION_TARGETS.forEach((target, index) => {
+                if(target.object) target.object.rotation.y += 0.0005 / (index + 1);
+            });
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                asteroid.position.add(asteroid.velocity);
+                asteroid.rotation.x += 0.005; asteroid.rotation.y += 0.005;
+                if (asteroid.position.z > shipGroup.position.z + 500) {
+                    scene.remove(asteroid); asteroids.splice(i, 1);
+                }
+            }
+        }
+
+        function updateMeteors() {
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const meteor = meteors[i];
+                meteor.position.add(meteor.velocity);
+                meteor.rotation.x += 0.1;
+                meteor.rotation.y += 0.1;
+                if (meteor.position.y < shipGroup.position.y - 500 || meteor.position.z > shipGroup.position.z + 500) {
+                    scene.remove(meteor);
+                    meteors.splice(i, 1);
+                }
+            }
+        }
+
+        // === FUNGSI PESAWAT TEMAN ===
+        function activateCompanionShip() {
+            // Buat objek Three.js untuk pesawat teman
+            const companionGeo = new THREE.ConeGeometry(0.5, 2, 6);
+            const companionMat = new THREE.MeshPhongMaterial({ 
+                color: 0x00aaff,
+                emissive: 0x0055aa,
+                shininess: 100
+            });
+            companionShip = new THREE.Mesh(companionGeo, companionMat);
+            companionShip.rotation.x = Math.PI / 2;
+            companionShip.scale.set(0.8, 0.8, 0.8);
+
+            // Tambahkan cahaya halus
+            const glow = new THREE.PointLight(0x00aaff, 0.8, 100);
+            glow.position.set(0, 0, 0);
+            companionShip.add(glow);
+
+            // Tempatkan di belakang pesawat pemain
+            const offset = new THREE.Vector3(0, 0, -50);
+            companionShip.position.copy(shipGroup.position).add(offset);
+            scene.add(companionShip);
+
+            // Tampilkan di UI
+            document.getElementById('companion-ship').classList.add('visible');
+            companionVisible = true;
+        }
+
+        function updateCompanionShip() {
+            if (!companionShip || !companionVisible) return;
+
+            // Ikuti pesawat pemain dengan jarak stabil
+            const offset = new THREE.Vector3(0, 0, -50);
+            const targetPos = shipGroup.position.clone().add(offset);
+            
+            // Gerakkan perlahan agar terasa natural
+            companionShip.position.lerp(targetPos, 0.03);
+            
+            // Rotasi mengikuti arah gerak
+            const dir = new THREE.Vector3();
+            dir.subVectors(shipGroup.position, companionShip.position).normalize();
+            companionShip.lookAt(dir);
+        }
+
+        function animate() {
+            if (isGameOver) return;
+            requestAnimationFrame(animate);
+            updateShipMovement();
+            updateLasers();
+            updateUIBars();
+            updateBoosters();
+            checkCollisions();
+            updateScenery();
+            updateMeteors();
+            updateCompanionShip(); // <-- PANGGIL INI SETIAP FRAME!
+
+            const relativeCameraOffset = new THREE.Vector3(0, 5, 20);
+            const cameraOffset = relativeCameraOffset.applyMatrix4(shipGroup.matrixWorld);
+            camera.position.lerp(cameraOffset, 0.1);
+            camera.lookAt(shipGroup.position);
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }, false);
+        init();
+    </script>
+</body>
+</html>
