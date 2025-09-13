@@ -118,6 +118,15 @@
         #win-screen button { background-color: #0077bb; }
         #win-screen button:hover { background-color: #00aaff; }
 
+        #difficulty-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
         /* Layar Dialog */
         #dialogue-screen {
             background-color: rgba(0, 10, 20, 0.9);
@@ -275,13 +284,19 @@
     <p id="speed-boost-message">PENINGKATAN KECEPATAN!</p>
     <div id="start-screen" class="overlay">
         <h2>PILIH LEVEL KESULITAN</h2>
-        <button onclick="selectDifficulty('easy')">Easy (60k)</button>
-        <button onclick="selectDifficulty('medium')">Medium (80k)</button>
-        <button onclick="selectDifficulty('hard')">Hard (100k)</button>
-        <button onclick="selectDifficulty('hardcore')">Hardcore (120k)</button>
-        <button onclick="selectDifficulty('impossible')">Impossible (200/poin)</button>
-        <button onclick="selectDifficulty('legends-senior')">Legends Senior (439/poin)</button>
-        <button onclick="selectDifficulty('mystery-adventurer')">Petualang Misteri (648/poin)</button>
+        <div id="difficulty-grid">
+            <button onclick="selectDifficulty('easy')">Easy (60k)</button>
+            <button onclick="selectDifficulty('medium')">Medium (80k)</button>
+            <button onclick="selectDifficulty('hard')">Hard (100k)</button>
+            <button onclick="selectDifficulty('hardcore')">Hardcore (120k)</button>
+            <button onclick="selectDifficulty('impossible')">Impossible (200/poin)</button>
+            <button onclick="selectDifficulty('legends-senior')">Legends Senior (439/poin)</button>
+            <button onclick="selectDifficulty('mystery-adventurer')">Petualang Misteri (648/poin)</button>
+            <button onclick="selectDifficulty('so-long')">So Long (800/poin)</button>
+            <button onclick="selectDifficulty('speed-of-spase')">Speed of Spase (1200/poin)</button>
+            <button onclick="selectDifficulty('are-you-sure')">Are You Sure? (2500/poin)</button>
+            <button onclick="selectDifficulty('hero-of-spase')">Hero of Spase (4000/poin)</button>
+        </div>
     </div>
     <div id="hangar-screen" class="overlay" style="display: none;">
         <h2>HANGGAR PESAWAT</h2>
@@ -453,7 +468,11 @@
             hardcore:   { asteroidCount: 6000, asteroidSpeed: 0.8, baseDistance: 120000, boosterSpawnRate: 1500, pointMultiplier: 2.5, meteorInterval: 2000, meteorDmg: 243, asteroidDmg: 122 },
             impossible: { asteroidCount: 8000, asteroidSpeed: 1.0, baseDistance: 180000, boosterSpawnRate: 1200, pointMultiplier: 200, meteorInterval: 1500, meteorDmg: 350, asteroidDmg: 175 },
             'legends-senior': { asteroidCount: 10000, asteroidSpeed: 1.3, baseDistance: 220000, boosterSpawnRate: 1000, pointMultiplier: 439, meteorInterval: 1200, meteorDmg: 420, asteroidDmg: 210 },
-            'mystery-adventurer': { asteroidCount: 12000, asteroidSpeed: 1.6, baseDistance: 280000, boosterSpawnRate: 800, pointMultiplier: 648, meteorInterval: 1000, meteorDmg: 500, asteroidDmg: 250 }
+            'mystery-adventurer': { asteroidCount: 12000, asteroidSpeed: 1.6, baseDistance: 280000, boosterSpawnRate: 800, pointMultiplier: 648, meteorInterval: 1000, meteorDmg: 500, asteroidDmg: 250 },
+            'so-long': { asteroidCount: 15000, asteroidSpeed: 1.5, baseDistance: 500000, boosterSpawnRate: 700, pointMultiplier: 800, meteorInterval: 900, meteorDmg: 550, asteroidDmg: 275 },
+            'speed-of-spase': { asteroidCount: 12000, asteroidSpeed: 2.5, baseDistance: 350000, boosterSpawnRate: 600, pointMultiplier: 1200, meteorInterval: 700, meteorDmg: 600, asteroidDmg: 300 },
+            'are-you-sure': { asteroidCount: 20000, asteroidSpeed: 3.0, baseDistance: 800000, boosterSpawnRate: 500, pointMultiplier: 2500, meteorInterval: 500, meteorDmg: 999, asteroidDmg: 500 },
+            'hero-of-spase': { asteroidCount: 25000, asteroidSpeed: 3.5, baseDistance: 1000000, boosterSpawnRate: 400, pointMultiplier: 4000, meteorInterval: 400, meteorDmg: 1200, asteroidDmg: 650 }
         };
 
         const BOOSTER_SETTINGS = { 
@@ -1238,4 +1257,6 @@
     </script>
 </body>
 </html>
+
+
 
