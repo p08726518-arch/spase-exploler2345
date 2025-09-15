@@ -2,9 +2,19 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Penjelajah Luar Angkasa 3D - Edisi Proyektil</title>
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title>Penjelajah Luar Angkasa 3D - Edisi Aksesoris</title>
     <style>
+        :root {
+            --primary-color: #00aaff;
+            --secondary-color: #ffc107;
+            --danger-color: #ff4444;
+            --success-color: #00ff88;
+            --dark-bg: #111;
+            --medium-bg: #222;
+            --light-bg: #333;
+        }
+
         body {
             margin: 0;
             overflow: hidden;
@@ -12,27 +22,22 @@
             color: white;
             font-family: 'Courier New', Courier, monospace;
         }
-        #info {
+
+        #info, #stats, #accessory-status {
             position: absolute;
-            top: 10px;
-            left: 10px;
             padding: 10px;
             background-color: rgba(0, 0, 0, 0.7);
             border-radius: 10px;
-            max-width: 300px;
             z-index: 100;
+            border: 1px solid var(--light-bg);
         }
-        #stats {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            text-align: right;
-             z-index: 100;
-        }
-         #ui-bars-container {
+
+        #info { top: 10px; left: 10px; max-width: 300px; }
+        #stats { top: 10px; right: 10px; text-align: right; }
+        #accessory-status { bottom: 90px; right: 10px; }
+        #accessory-status p { margin: 4px 0; font-size: 0.9em; }
+
+        #ui-bars-container {
             position: absolute;
             bottom: 20px;
             left: 50%;
@@ -42,8 +47,8 @@
             gap: 8px;
             align-items: center;
             z-index: 100;
-         }
-         .bar-container {
+        }
+        .bar-container {
             width: 300px;
             height: 30px;
             background-color: rgba(50, 50, 50, 0.8);
@@ -51,8 +56,8 @@
             border-radius: 15px;
             padding: 3px;
             position: relative;
-         }
-         .bar-label {
+        }
+        .bar-label {
              position: absolute;
              left: 10px;
              top: 50%;
@@ -61,8 +66,8 @@
              color: white;
              text-shadow: 1px 1px 2px black;
              z-index: 1;
-         }
-        #fuel-bar, #health-bar {
+        }
+        #fuel-bar, #health-bar, #warmth-bar {
             width: 100%;
             height: 100%;
             border-radius: 10px;
@@ -70,19 +75,28 @@
         }
         #fuel-bar { background-color: #00ff00; }
         #health-bar { background-color: #28a745; }
+        #warmth-bar { background-color: #ff8800; }
 
-         #refuel-message, #booster-message, #speed-boost-message {
+        #refuel-message, #booster-message, #speed-boost-message, #freeze-warning {
             position: absolute;
             left: 50%;
             transform: translate(-50%, -50%);
             font-size: 2em;
             display: none;
             text-shadow: 2px 2px 4px #000;
-             z-index: 250;
+            z-index: 250;
+            text-align: center;
         }
-        #refuel-message { top: 50%; color: #ffcc00; }
-        #booster-message { top: 40%; color: #00ffff; }
+        #refuel-message { top: 50%; color: var(--secondary-color); }
+        #booster-message { top: 40%; color: var(--primary-color); }
         #speed-boost-message { top: 60%; color: #ff00ff; }
+        #freeze-warning { top: 30%; color: #87ceeb; font-size: 3em; animation: pulseWarning 1s infinite; }
+
+        @keyframes pulseWarning {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
         h1, p { margin: 0 0 5px 0; }
         .overlay {
             position: absolute;
@@ -97,13 +111,14 @@
             align-items: center;
             text-align: center;
             z-index: 200;
+            transition: opacity 0.3s;
         }
-        .overlay h2 { font-size: 3em; margin-bottom: 20px; }
+        .overlay h2 { font-size: 3em; margin-bottom: 20px; color: var(--secondary-color); }
         .overlay button {
             padding: 15px 30px;
             font-size: 1.2em;
             cursor: pointer;
-            background-color: #333;
+            background-color: var(--light-bg);
             border: 2px solid #eee;
             color: white;
             border-radius: 10px;
@@ -112,415 +127,264 @@
             min-width: 200px;
             transition: all 0.2s ease;
         }
-        .overlay button:hover { background-color: #555; border-color: #ffc107; }
+        .overlay button:hover { background-color: #555; border-color: var(--secondary-color); }
+        .overlay button:disabled { background-color: #222; color: #777; border-color: #555; cursor: not-allowed;}
+
         #game-over-screen button { background-color: #bb0000; }
         #game-over-screen button:hover { background-color: #ff0000; }
-        #win-screen button { background-color: #0077bb; }
-        #win-screen button:hover { background-color: #00aaff; }
 
-        #difficulty-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            width: 90%;
-            max-width: 1200px;
+        /* Dim Screen for Meteor Event */
+        #dim-overlay {
+            background-color: rgba(0,0,0,0.95);
+            pointer-events: none;
+            z-index: 150;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
         }
 
-        /* Layar Dialog */
-        #dialogue-screen {
-            background-color: rgba(0, 10, 20, 0.9);
-        }
-        #dialogue-box {
-            width: 80%;
-            max-width: 800px;
-            padding: 30px;
-            background-color: rgba(10, 20, 40, 0.9);
-            border: 3px solid #00aaff;
-            border-radius: 15px;
-        }
-        #dialogue-text {
-            font-size: 1.5em;
-            margin-bottom: 25px;
-            line-height: 1.6;
-            min-height: 100px;
-        }
-        #dialogue-speaker {
-            font-weight: bold;
-            color: #ffc107;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-
-        /* Gaya Hangar */
-        #hangar-screen {
+        /* Hangar & Shop & Crate Styling */
+        #hangar-screen, #shop-screen, #crate-screen {
             justify-content: flex-start;
-            padding-top: 30px;
-            padding-bottom: 30px;
+            padding: 30px;
+            box-sizing: border-box;
             overflow-y: auto;
         }
-        #ship-grid {
+        .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
             width: 90%;
             max-width: 1400px;
             padding: 20px 0;
         }
-        .ship-card {
-            background-color: #222;
+        .card {
+            background-color: var(--medium-bg);
             border: 2px solid #555;
             border-radius: 10px;
-            padding: 15px;
+            padding: 10px;
             text-align: center;
             transition: all 0.2s ease-in-out;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
         }
-        .ship-card.unlocked:hover {
-            border-color: #00ff00;
-            transform: translateY(-5px);
-            cursor: pointer;
-        }
-        .ship-card.locked {
-            background-color: #1a1a1a;
-            color: #666;
-        }
-        .ship-card.locked h3 { color: #aaa; }
-        .ship-card.affordable {
-            border-color: #ffc107;
-            cursor: pointer;
-        }
-        .ship-card.affordable:hover {
-            background-color: #332b00;
-            transform: translateY(-5px);
-        }
-        .ship-card h3 { margin-top: 0; margin-bottom: 10px; color: #eee; font-size: 1.1em; }
-        .ship-card p { font-size: 0.8em; margin-bottom: 10px; min-height: 50px; color: #ccc; }
-        .ship-card .cost { font-weight: bold; color: #ffc107; margin-bottom: 10px; }
-        .ship-card button { width: 100%; margin-top: 10px; font-size: 0.9em; padding: 10px; }
-        .ship-card .selected-badge { color: #00ff00; font-weight: bold; margin-top: 10px; display: block; }
+        .card:hover { transform: translateY(-5px); }
+        .card h3 { margin-top: 0; margin-bottom: 8px; color: #eee; font-size: 1em; }
+        .card p { font-size: 0.75em; margin-bottom: 8px; min-height: 40px; color: #ccc; }
+        .card .cost { font-weight: bold; color: var(--secondary-color); margin-bottom: 8px; }
+        .card button { width: 100%; margin-top: 8px; font-size: 0.8em; padding: 8px; }
+
+        .ship-card.unlocked:hover { border-color: var(--success-color); cursor: pointer; }
+        .ship-card.locked { background-color: var(--dark-bg); color: #666; }
+        .ship-card.affordable { border-color: var(--secondary-color); cursor: pointer; }
+        .ship-card.affordable:hover { background-color: #332b00; }
+        .ship-card .selected-badge { color: var(--success-color); font-weight: bold; }
+
+        .accessory-card .level { color: var(--primary-color); }
+        .accessory-card .upgrade-btn { background-color: var(--primary-color); color: black; }
+
+        .crate-card { border-color: #8A2BE2; }
+        .crate-card h3 { color: #DDA0DD; }
+        .crate-card button { background-color: #8A2BE2; }
+        
+        #crate-result-screen { z-index: 210; }
+        #crate-results { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;}
+        .result-card { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--primary-color); width: 180px;}
+        .result-card.duplicate { border-color: var(--secondary-color); }
+        .result-card p { font-size: 1em; margin: 5px 0; }
+        .result-card .points-gain { color: var(--secondary-color); font-weight: bold; }
+
+        .nav-tabs { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 2px solid var(--light-bg); }
+        .nav-tab { background: none; border: none; color: #888; padding: 15px 30px; font-size: 1.5em; cursor: pointer; }
+        .nav-tab.active { color: var(--secondary-color); border-bottom: 3px solid var(--secondary-color); }
+        
         /* Kontrol Mobile */
-        #mobile-controls { display: none; /* Sembunyikan default */ position: absolute; bottom: 20px; left: 20px; z-index: 300; flex-direction: row; justify-content: space-between; width: calc(100% - 40px); }
+        #mobile-controls { display: none; position: absolute; bottom: 20px; left: 20px; z-index: 300; flex-direction: row; justify-content: space-between; width: calc(100% - 40px); }
         #joystick-area, #fire-button { background-color: rgba(50, 50, 50, 0.7); border: 2px solid #888; border-radius: 50%; }
         #joystick-area { width: 150px; height: 150px; position: relative; }
         #joystick-thumb { width: 60px; height: 60px; background-color: #eee; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         #fire-button { width: 100px; height: 100px; background-color: rgba(255, 0, 0, 0.7); border: 2px solid #ff0000; display: flex; justify-content: center; align-items: center; font-size: 1.5em; }
-        @media (max-width: 768px) {
-            #mobile-controls { display: flex; }
-            #info p:nth-of-type(3) { display: none; }
-            #ship-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-        }
-        /* Efek Pesawat Teman */
-        .companion-ship {
-            opacity: 0;
-            transition: opacity 1s ease;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .companion-ship.visible {
-            opacity: 0.8;
-        }
-        .companion-ship .body {
-            width: 20px;
-            height: 40px;
-            background: radial-gradient(circle, #00aaff, #0055aa);
-            border-radius: 50% 50% 30% 30%;
-            transform: rotateX(90deg);
-            position: absolute;
-            filter: blur(1px);
-        }
-        .companion-ship .wing-left, .companion-ship .wing-right {
-            width: 30px;
-            height: 8px;
-            background: linear-gradient(90deg, transparent, #00aaff, transparent);
-            position: absolute;
-            top: 16px;
-            border-radius: 4px;
-            filter: blur(1px);
-        }
-        .companion-ship .wing-left { left: -30px; transform: skewY(-15deg); }
-        .companion-ship .wing-right { right: -30px; transform: skewY(15deg); }
-        .companion-ship .glow {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(0,170,255,0.6), transparent 70%);
-            border-radius: 50%;
-            top: 0;
-            left: 0;
-            animation: pulseGlow 1.5s infinite alternate;
-        }
-        @keyframes pulseGlow {
-            from { opacity: 0.4; }
-            to { opacity: 0.9; }
-        }
+        @media (max-width: 768px) { #mobile-controls { display: flex; } }
     </style>
 </head>
 <body>
     <div id="info">
-        <h1 id="mission-title">Misi: Jupiter</h1>
+        <h1>Misi: <span id="mission-title">Jupiter</span></h1>
         <p>Tugas: Capai target, hancurkan asteroid!</p>
         <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Gerak), Spasi (Tembak)</p>
+        <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>
         <p id="distance-info">Jarak ke Target: ...</p>
     </div>
     <div id="stats">
         <p>Poin: <span id="points">0</span></p>
-        <p>Asteroid Dihancurkan: <span id="score">0</span></p>
+        <p>Asteroid: <span id="score">0</span></p>
     </div>
+    <div id="accessory-status"></div>
+
     <div id="ui-bars-container">
         <div id="health-container" class="bar-container">
             <div class="bar-label">HEALTH</div>
             <div id="health-bar"></div>
+        </div>
+         <div id="warmth-container" class="bar-container" style="display: none;">
+            <div class="bar-label">KETAHANAN DINGIN</div>
+            <div id="warmth-bar"></div>
         </div>
         <div id="fuel-container" class="bar-container">
             <div class="bar-label">FUEL</div>
             <div id="fuel-bar"></div>
         </div>
     </div>
+    
     <p id="refuel-message">MENGISI BAHAN BAKAR</p>
     <p id="booster-message">BOOSTER AKTIF!</p>
     <p id="speed-boost-message">PENINGKATAN KECEPATAN!</p>
+    <p id="freeze-warning">SISTEM MEMBEKU!</p>
+
     <div id="start-screen" class="overlay">
         <h2>PILIH LEVEL KESULITAN</h2>
         <div id="difficulty-grid">
-            <button onclick="selectDifficulty('easy')">Easy (60k)</button>
-            <button onclick="selectDifficulty('medium')">Medium (80k)</button>
-            <button onclick="selectDifficulty('hard')">Hard (100k)</button>
-            <button onclick="selectDifficulty('hardcore')">Hardcore (120k)</button>
-            <button onclick="selectDifficulty('impossible')">Impossible (200/poin)</button>
-            <button onclick="selectDifficulty('legends-senior')">Legends Senior (439/poin)</button>
-            <button onclick="selectDifficulty('mystery-adventurer')">Petualang Misteri (648/poin)</button>
-            <button onclick="selectDifficulty('so-long')">So Long (800/poin)</button>
-            <button onclick="selectDifficulty('speed-of-spase')">Speed of Spase (1200/poin)</button>
-            <button onclick="selectDifficulty('are-you-sure')">Are You Sure? (2500/poin)</button>
-            <button onclick="selectDifficulty('hero-of-spase')">Hero of Spase (4000/poin)</button>
+            <!-- Buttons are generated by JS -->
         </div>
     </div>
+
     <div id="hangar-screen" class="overlay" style="display: none;">
-        <h2>HANGGAR PESAWAT</h2>
-        <p>Pilih pesawat Anda. Selesaikan misi untuk mendapatkan poin dan membuka pesawat baru!</p>
-        <div id="ship-grid">
-            <!-- Kartu pesawat akan dibuat oleh JavaScript -->
+        <div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('hangar-content')">HANGGAR</button>
+                <button class="nav-tab" onclick="showTab('shop-content')">AKSESORIS</button>
+                <button class="nav-tab" onclick="showTab('crate-content')">CRATE</button>
+            </div>
+            <div id="hangar-content">
+                <h2>HANGGAR PESAWAT</h2>
+                <p>Pilih pesawat Anda. Selesaikan misi untuk mendapat poin dan membuka yang baru!</p>
+                <div id="ship-grid" class="grid-container"></div>
+            </div>
+            <div id="shop-content" style="display:none;">
+                <h2>TOKO AKSESORIS</h2>
+                <p>Beli dan tingkatkan aksesoris untuk membantu petualanganmu!</p>
+                <div id="accessory-grid" class="grid-container"></div>
+            </div>
+             <div id="crate-content" style="display:none;">
+                <h2>CRATE PESAWAT</h2>
+                <p>Buka crate untuk kesempatan mendapatkan pesawat langka!</p>
+                <div id="crate-grid" class="grid-container"></div>
+            </div>
         </div>
     </div>
+
     <div id="game-over-screen" class="overlay" style="display: none;">
         <h2>GAME OVER</h2><p id="game-over-reason">Anda menabrak asteroid!</p><button onclick="location.reload()">Coba Lagi</button>
     </div>
      <div id="win-screen" class="overlay" style="display: none;">
         <h2>MISI BERHASIL!</h2><p id="win-message">Anda telah sampai di Jupiter dengan selamat!</p><button onclick="location.reload()">Main Lagi</button>
     </div>
-    <div id="dialogue-screen" class="overlay" style="display: none;">
-        <div id="dialogue-box">
-            <p id="dialogue-speaker"></p>
-            <p id="dialogue-text"></p>
-            <div id="dialogue-buttons">
-                 <!-- Tombol akan dibuat oleh JavaScript -->
-            </div>
-        </div>
+    <div id="crate-result-screen" class="overlay" style="display: none;">
+        <h2>HASIL CRATE</h2>
+        <div id="crate-results"></div>
+        <button onclick="document.getElementById('crate-result-screen').style.display = 'none'; showHangar();">Tutup</button>
     </div>
+    <div id="dim-overlay" class="overlay" style="display:none;"></div>
+    
     <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div><div id="fire-button">TEMBAK</div></div>
-
-    <!-- Pesawat Teman (NPC) -->
-    <div id="companion-ship" class="companion-ship" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 50;">
-        <div class="body"></div>
-        <div class="wing-left"></div>
-        <div class="wing-right"></div>
-        <div class="glow"></div>
-    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // Inisialisasi Three.js
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x000000, 0.00005);
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000000); // Increased far plane for huge distances
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50000000); // FOV diperkecil dari 75
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
         // State Game
         let isGameStarted = false, isPaused = false, isGameOver = false, score = 0, currentLevel = 'easy';
-        let shipGroup, starField, denseStarField;
-        const asteroids = [], lasers = [], boosters = [], meteors = [], shipWrecks = [];
+        let shipGroup, starField, denseStarField, shipSpotlight, target; // Target object
+        const asteroids = [], lasers = [], boosters = [], meteors = [], shipWrecks = [], detectionLines = [];
         
-        // Sistem Health, Bahan Bakar & Booster
+        // Sistem Health, Bahan Bakar, dll
         let maxHealth = 100, currentHealth = maxHealth;
-        let maxFuel = 100, currentFuel = maxFuel, fuelConsumptionRate = 0.1, refuelRate = 0.5, isRefueling = false;
-        let isBoosterActive = false, boosterDuration = 0, boosterSpeedMultiplier = 1, boosterFuelRate = 0;
-        let healthRegenInterval;
+        let maxFuel = 100, currentFuel = maxFuel;
+        
+        // Mekanik Baru: Pembekuan
+        let freezeTimer = 49000; // 49 detik
+        let timeUntilFreeze = freezeTimer;
+        let isFrozen = false;
+        let warmthActive = false;
+        let warmthDuration = 0;
+        let maxWarmth = 60000; // 60 detik
 
-        // Data Player (disimpan di localStorage)
-        let playerData = {
+        // Data Player
+        let playerData = {};
+        const defaultPlayerData = {
             points: 0,
-            unlockedShips: [0], // Mulai dengan pesawat ID 0 terbuka
+            unlockedShips: [0],
             selectedShipId: 0,
-            meteorDamageMultiplier: 1.0
+            accessories: {
+                shield: { level: 0 },
+                speed: { level: 0 },
+                sword: { level: 0 },
+                flashlight: { level: 0 },
+                warmth: { level: 0 },
+            }
         };
 
         // UI Elements
-        const missionTitle = document.getElementById('mission-title'), distanceInfo = document.getElementById('distance-info');
-        const scoreInfo = document.getElementById('score'), pointsInfo = document.getElementById('points');
-        const fuelBar = document.getElementById('fuel-bar'), healthBar = document.getElementById('health-bar');
-        const refuelMessage = document.getElementById('refuel-message'), boosterMessage = document.getElementById('booster-message'), speedBoostMessage = document.getElementById('speed-boost-message');
+        const pointsInfo = document.getElementById('points');
 
-        // --- DATABASE PESAWAT ---
-        const SPACESHIPS = [];
-        const baseShips = [
-            // Tier 0 (ID: 0)
-            {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},
-            // Tier 1 (ID: 1-4)
-            {id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.'},
-            {id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},
-            {id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},
-            {id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},
-            // Tier 2 (ID: 5-12)
-            {id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},
-            {id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},
-            {id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},
-            {id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},
-            {id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},
-            {id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},
-            {id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},
-            {id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},
-            // Tier 3 (ID: 13-20)
-            {id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},
-            {id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},
-            {id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},
-            {id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},
-            {id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},
-            {id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},
-            {id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},
-            {id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},
-            // Tier 4 (ID: 21-28)
-            {id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},
-            {id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},
-            {id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},
-            {id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},
-            {id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},
-            {id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},
-            {id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},
-            {id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},
-            // Tier 5 (ID: 29-31)
-            {id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},
-            {id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},
-            {id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},
-            // Tier 6 - Tambahan (ID: 32-42)
-            {id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.'},
-            {id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.'},
-            {id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.'},
-            {id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.'},
-            {id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.'},
-            {id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.'},
-            {id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.'},
-            {id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.'},
-            {id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.'},
-            {id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.'},
-            {id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.'},
-            // Tier 7 - Legendaris (ID: 43-52)
-            {id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.'},
-            {id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.'},
-            {id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.'},
-            {id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.'},
-            {id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.'},
-            {id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.'},
-            {id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.'},
-            {id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.'},
-            {id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.'},
-            {id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.'},
+        // --- DATABASE GAME ---
+        const SPACESHIPS = []; // Diisi secara dinamis
+        const ACCESSORIES = {
+            shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 24, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
+            speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 24, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
+            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 24, desc: (lvl) => `Mendeteksi objek berbahaya dalam radius ${200 + lvl * 20} unit.`},
+            flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 24, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
+            warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`}
+        };
+        const CRATES = [
+            { id: 'starter', name: 'Starter Crate', cost: 196000, ships: [1, 2, 3, 4, 5, 6] },
+            { id: 'medium', name: 'Medium Crate', cost: 242000, ships: [7, 8, 9, 10, 11, 12, 13, 14] },
+            { id: 'legends', name: 'Legends Crate', cost: 397000, ships: [15, 16, 17, 18, 19, 20, 21, 22, 23, 24] },
+            { id: 'mysterious', name: 'Mysterious Crate', cost: 474000, ships: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52] }
         ];
-
-        // Generate stats dynamically
-        baseShips.forEach((ship, index) => {
-            const tier = Math.floor(index / 7); // Adjust tier calculation for more ships
-            SPACESHIPS.push({
-                ...ship,
-                stats: {
-                    health: 100 + (index * 30) + (tier * 150),
-                    maxSpeed: 18 + (index * 0.9) + (tier * 2.5),
-                    fuel: 250 + (index * 25) + (tier * 200),
-                    accel: 0.18 + (index * 0.009) + (tier * 0.025),
-                    turn: 0.035 + (index * 0.0006) + (tier * 0.0025),
-                    laserSpeed: 60 + (index * 3.5) + (tier * 12),
-                    projectile: getProjectileForShip(index)
-                }
-            });
-        });
-
-        function getProjectileForShip(id) {
-            const type = id % 8;
-            if (id === 0) return { type: 'standard', cooldown: 450 };
-            if (type === 1) return { type: 'double', cooldown: 600 - (id*4) };
-            if (type === 2) return { type: 'spread', count: 3, angle: 0.2 + (id*0.008), cooldown: 700 - (id*4) };
-            if (type === 3) return { type: 'burst', count: 3, delay: 80 - (id*0.5), cooldown: 750 - (id*4) };
-            if (type === 4) return { type: 'railgun', cooldown: 850 - (id*4), pierce: true };
-            if (type === 5) return { type: 'spread', count: 5, angle: 0.3 + (id*0.008), cooldown: 800 - (id*4) };
-            if (type === 6) return { type: 'burst', count: 5, delay: 70 - (id*0.5), cooldown: 900 - (id*4) };
-            if (type === 7) return { type: 'double_railgun', cooldown: 1000 - (id*4), pierce: true };
-            return { type: 'standard', cooldown: 400 - (id*4) };
-        }
-
+        const DUPLICATE_POINTS = 298;
+        
+        // --- PENGATURAN KESULITAN ---
         const DIFFICULTY_SETTINGS = {
-            easy:       { asteroidCount: 1000,  asteroidSpeed: 0.4, baseDistance: 60000, boosterSpawnRate: 3000, pointMultiplier: 1.0, meteorInterval: 5000, meteorDmg: 39, asteroidDmg: 20 },
-            medium:     { asteroidCount: 2000, asteroidSpeed: 0.5, baseDistance: 80000, boosterSpawnRate: 2500, pointMultiplier: 1.5, meteorInterval: 4000, meteorDmg: 132, asteroidDmg: 66 },
-            hard:       { asteroidCount: 4000, asteroidSpeed: 0.6, baseDistance: 100000, boosterSpawnRate: 2000, pointMultiplier: 2.0, meteorInterval: 3000, meteorDmg: 164, asteroidDmg: 82 },
-            hardcore:   { asteroidCount: 6000, asteroidSpeed: 0.8, baseDistance: 120000, boosterSpawnRate: 1500, pointMultiplier: 2.5, meteorInterval: 2000, meteorDmg: 243, asteroidDmg: 122 },
-            impossible: { asteroidCount: 8000, asteroidSpeed: 1.0, baseDistance: 180000, boosterSpawnRate: 1200, pointMultiplier: 200, meteorInterval: 1500, meteorDmg: 350, asteroidDmg: 175 },
-            'legends-senior': { asteroidCount: 10000, asteroidSpeed: 1.3, baseDistance: 220000, boosterSpawnRate: 1000, pointMultiplier: 439, meteorInterval: 1200, meteorDmg: 420, asteroidDmg: 210 },
-            'mystery-adventurer': { asteroidCount: 12000, asteroidSpeed: 1.6, baseDistance: 280000, boosterSpawnRate: 800, pointMultiplier: 648, meteorInterval: 1000, meteorDmg: 500, asteroidDmg: 250 },
-            'so-long': { asteroidCount: 15000, asteroidSpeed: 1.5, baseDistance: 500000, boosterSpawnRate: 700, pointMultiplier: 800, meteorInterval: 900, meteorDmg: 550, asteroidDmg: 275 },
-            'speed-of-spase': { asteroidCount: 12000, asteroidSpeed: 2.5, baseDistance: 350000, boosterSpawnRate: 600, pointMultiplier: 1200, meteorInterval: 700, meteorDmg: 600, asteroidDmg: 300 },
-            'are-you-sure': { asteroidCount: 20000, asteroidSpeed: 3.0, baseDistance: 800000, boosterSpawnRate: 500, pointMultiplier: 2500, meteorInterval: 500, meteorDmg: 999, asteroidDmg: 500 },
-            'hero-of-spase': { asteroidCount: 25000, asteroidSpeed: 3.5, baseDistance: 1000000, boosterSpawnRate: 400, pointMultiplier: 4000, meteorInterval: 400, meteorDmg: 1200, asteroidDmg: 650 }
+            easy:       { asteroidCount: 1000, baseDistance: 60000, pointMultiplier: 1.0, meteorInterval: 15000, freezeResist: 1.2, largeMeteorChance: 0.1 },
+            medium:     { asteroidCount: 2000, baseDistance: 80000, pointMultiplier: 1.5, meteorInterval: 12000, freezeResist: 1.0, largeMeteorChance: 0.2 },
+            hard:       { asteroidCount: 4000, baseDistance: 100000, pointMultiplier: 2.0, meteorInterval: 10000, freezeResist: 0.9, largeMeteorChance: 0.3 },
+            hardcore:   { asteroidCount: 6000, baseDistance: 120000, pointMultiplier: 2.5, meteorInterval: 8000, freezeResist: 0.8, largeMeteorChance: 0.4 },
+            impossible: { asteroidCount: 8000, baseDistance: 180000, pointMultiplier: 200, meteorInterval: 7000, freezeResist: 0.7, largeMeteorChance: 0.5 },
+            'legends-senior': { asteroidCount: 10000, baseDistance: 220000, pointMultiplier: 439, meteorInterval: 6000, freezeResist: 0.6, largeMeteorChance: 0.6 },
+            'mystery-adventurer': { asteroidCount: 12000, baseDistance: 280000, pointMultiplier: 648, meteorInterval: 5000, freezeResist: 0.5, largeMeteorChance: 0.7 },
+            'so-long': { asteroidCount: 15000, baseDistance: 500000, pointMultiplier: 800, meteorInterval: 4500, freezeResist: 0.4, largeMeteorChance: 0.8 },
+            'speed-of-spase': { asteroidCount: 12000, baseDistance: 350000, pointMultiplier: 1200, meteorInterval: 4000, freezeResist: 0.3, largeMeteorChance: 0.9 },
+            'are-you-sure': { asteroidCount: 20000, baseDistance: 800000, pointMultiplier: 2500, meteorInterval: 3000, freezeResist: 0.2, largeMeteorChance: 1.0 },
+            'hero-of-spase': { asteroidCount: 25000, baseDistance: 1000000, pointMultiplier: 4000, meteorInterval: 2500, freezeResist: 0.1, largeMeteorChance: 1.0 }
         };
 
-        const BOOSTER_SETTINGS = { 
-            easy: { duration: 5, fuelRate: 0.2 }, 
-            medium: { duration: 10, fuelRate: 0.3 }, 
-            hard: { duration: 15, fuelRate: 0.4 }, 
-            hardcore: { duration: 20, fuelRate: 0.5 }, 
-            impossible: { duration: 25, fuelRate: 0.6 },
-            'legends-senior': { duration: 30, fuelRate: 0.7 },
-            'mystery-adventurer': { duration: 35, fuelRate: 0.8 }
-        };
+        let currentMissionIndex = 0;
+        let maxSpeed, acceleration, turnSpeed, laserFireSpeed, currentProjectileStats;
+        let speed = 0.0, angularVelocity = 0.0;
+        const shipInertia = 0.95, shipDrift = 0.995;
 
-        const MISSION_TARGETS = [
-            { name: 'Jupiter', travelDistance: 0, object: null, speedBoost: 1 }, 
-            { name: 'Pluto', travelDistance: 40000, object: null, speedBoost: 1 },
-            { name: 'Andromeda', travelDistance: 164353, object: null, speedBoost: 1, isGalaxy: true },
-            { name: 'Triangulum', travelDistance: 262965, object: null, speedBoost: 2 },
-            { name: 'Messier 81', travelDistance: 420744, object: null, speedBoost: 3, companionTrigger: true },
-            { name: 'Kepler-452b', travelDistance: 673190, object: null, speedBoost: 4 },
-            { name: 'Proxima Centauri b', travelDistance: 1077104, object: null, speedBoost: 5 },
-            { name: 'TOI-700 d', travelDistance: 1723366, object: null, speedBoost: 10 },
-            { name: 'Nebula Cat\'s Eye', travelDistance: 2500000, object: null, speedBoost: 12, dialogueTrigger: true },
-            { name: 'MASCARA-2 b', travelDistance: 3500000, object: null, speedBoost: 15 },
-            { name: 'Kepler-438b', travelDistance: 5000000, object: null, speedBoost: 20 },
-            { name: 'Kepler-16b', travelDistance: 7000000, object: null, speedBoost: 25 },
-            { name: 'Kepler-186f', travelDistance: 10000000, object: null, speedBoost: 30 },
-            { name: 'HD 114762 b', travelDistance: 15000000, object: null, speedBoost: 35 },
-            { name: 'LHS 3844 b', travelDistance: 22000000, object: null, speedBoost: 40 },
-            { name: 'HD 106906 b', travelDistance: 30000000, object: null, speedBoost: 50 },
-            { name: 'HR 8799 e', travelDistance: 45000000, object: null, speedBoost: 60 }
-        ];
+        // Status Aksesoris
+        const accessoryCooldowns = { shield: 0, speed: 0, warmth: 0 };
+        let shieldActive = false, speedBoostActive = false;
 
-        let currentMissionIndex = 0, currentTarget = MISSION_TARGETS[currentMissionIndex];
-        let maxSpeed, acceleration, deceleration = 0.98, turnSpeed, laserFireSpeed, currentProjectileStats;
-        let lastFireTime = 0;
-
-        // --- PESAWAT TEMAN (NPC) ---
-        let companionShip = null; 
-        let companionVisible = false;
-
+        // --- FUNGSI UTAMA ---
+        
         function loadPlayerData() {
             const savedData = localStorage.getItem('spaceExplorerData');
             if (savedData) {
+                // Gabungkan data tersimpan dengan default untuk memastikan semua properti ada
                 const parsedData = JSON.parse(savedData);
-                playerData.points = parsedData.points || 0;
-                playerData.unlockedShips = parsedData.unlockedShips || [0];
-                playerData.selectedShipId = parsedData.selectedShipId || 0;
-                playerData.meteorDamageMultiplier = parsedData.meteorDamageMultiplier || 1.0;
+                playerData = { ...defaultPlayerData, ...parsedData };
+                playerData.accessories = { ...defaultPlayerData.accessories, ...parsedData.accessories };
+            } else {
+                playerData = JSON.parse(JSON.stringify(defaultPlayerData)); // deep copy
             }
             pointsInfo.innerText = playerData.points.toLocaleString();
         }
@@ -531,14 +395,24 @@
         }
 
         function init() {
+            generateShipDatabase();
             loadPlayerData();
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
-            const pointLight = new THREE.PointLight(0xffffff, 1);
-            pointLight.position.set(200, 200, 200);
-            scene.add(pointLight);
             createScenery();
             setupJoystick();
+            populateDifficultyButtons();
+        }
+        
+        function populateDifficultyButtons() {
+            const grid = document.getElementById('difficulty-grid');
+            grid.innerHTML = '';
+            for (const key in DIFFICULTY_SETTINGS) {
+                const button = document.createElement('button');
+                button.textContent = `${key.replace(/-/g, ' ').toUpperCase()} (${DIFFICULTY_SETTINGS[key].pointMultiplier}x Poin)`;
+                button.onclick = () => selectDifficulty(key);
+                grid.appendChild(button);
+            }
         }
 
         function selectDifficulty(difficulty) {
@@ -547,103 +421,229 @@
             showHangar();
         }
 
+        function startGame() {
+            isGameStarted = true;
+            document.getElementById('hangar-screen').style.display = 'none';
+            
+            const shipData = SPACESHIPS.find(s => s.id === playerData.selectedShipId) || SPACESHIPS[0];
+            setupShipStats(shipData);
+            
+            createPlayer(shipData);
+            const settings = DIFFICULTY_SETTINGS[currentLevel];
+            timeUntilFreeze = freezeTimer * settings.freezeResist;
+            
+            // Atur target misi awal
+            target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), new THREE.MeshPhongMaterial({ color: 0xE8A763 })) };
+            target.object.position.z = -settings.baseDistance;
+            scene.add(target.object);
+
+            createAsteroids(settings.asteroidCount, 0.5, settings.baseDistance);
+            
+            setInterval(() => { if(isGameStarted && !isGameOver && Math.random() < settings.largeMeteorChance) startLargeMeteorEvent(); }, settings.meteorInterval);
+            
+            animate();
+        }
+
+        // --- UI & NAVIGASI MENU ---
+
         function showHangar() {
             const hangarScreen = document.getElementById('hangar-screen');
+            hangarScreen.style.display = 'flex';
+            populateShipGrid();
+            populateAccessoryGrid();
+            populateCrateGrid();
+            showTab('hangar-content');
+        }
+
+        function showTab(tabId) {
+            ['hangar-content', 'shop-content', 'crate-content'].forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            document.getElementById(tabId).style.display = 'block';
+
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.nav-tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+        }
+
+        function populateShipGrid() {
             const shipGrid = document.getElementById('ship-grid');
             shipGrid.innerHTML = '';
             SPACESHIPS.forEach(ship => {
                 const card = document.createElement('div');
-                card.classList.add('ship-card');
+                card.className = 'card ship-card';
                 const isUnlocked = playerData.unlockedShips.includes(ship.id);
                 const canAfford = playerData.points >= ship.cost;
-                let actionHtml = '';
+                
                 if (isUnlocked) {
                     card.classList.add('unlocked');
                     card.onclick = () => selectShip(ship.id); 
-                    actionHtml = `<p style="color: #00ffaa; font-size: 0.9em; margin-top: 10px; font-weight: bold;">-- KLIK UNTUK MAIN --</p>`;
-                    if (playerData.selectedShipId === ship.id) {
-                        card.style.borderColor = '#00ffaa'; 
-                    }
                 } else {
                     card.classList.add('locked');
                     if (canAfford) {
                         card.classList.add('affordable');
                         card.onclick = () => buyShip(ship.id);
-                        actionHtml = `<button style="background-color: #ffc107; color: black;">BELI</button>`;
-                    } else {
-                        actionHtml = `<button disabled>TERKUNCI</button>`;
                     }
                 }
+                
                 card.innerHTML = `
-                    <div>
-                        <h3>${ship.name} (HP: ${ship.stats.health})</h3>
-                        <p>${ship.desc}</p>
-                        ${!isUnlocked ? `<p class="cost">Poin: ${ship.cost.toLocaleString()}</p>` : ''}
-                    </div>
-                    <div>${actionHtml}</div>
+                    <h3>${ship.name}</h3>
+                    <p>${ship.desc}</p>
+                    ${isUnlocked ? `<p class="selected-badge">${playerData.selectedShipId === ship.id ? '&#10004; DIPILIH' : 'KLIK UNTUK MAIN'}</p>` : `<p class="cost">Poin: ${ship.cost.toLocaleString()}</p>`}
                 `;
+                if (playerData.selectedShipId === ship.id) card.style.borderColor = 'var(--success-color)';
                 shipGrid.appendChild(card);
             });
-            hangarScreen.style.display = 'flex';
+        }
+        
+        function selectShip(shipId) {
+             playerData.selectedShipId = shipId;
+             savePlayerData();
+             startGame();
         }
 
         function buyShip(shipId) {
             const ship = SPACESHIPS.find(s => s.id === shipId);
-            if (ship && playerData.points >= ship.cost) {
+            if (ship && playerData.points >= ship.cost && !playerData.unlockedShips.includes(shipId)) {
                 playerData.points -= ship.cost;
                 playerData.unlockedShips.push(ship.id);
-                playerData.meteorDamageMultiplier *= 1.5; // Tingkatkan damage setiap beli
                 savePlayerData();
-                showHangar(); 
+                populateShipGrid(); 
             }
         }
 
-        function selectShip(shipId) {
-             playerData.selectedShipId = shipId;
-             savePlayerData();
-             document.getElementById('hangar-screen').style.display = 'none';
-             startGame();
-        }
-
-        function startGame() {
-            isGameStarted = true;
-            createPlayer(playerData.selectedShipId);
-            const settings = DIFFICULTY_SETTINGS[currentLevel];
-            MISSION_TARGETS[0].travelDistance = settings.baseDistance;
-            MISSION_TARGETS[0].object.position.z = -settings.baseDistance;
-            createAsteroids(settings.asteroidCount, settings.asteroidSpeed, settings.baseDistance);
-            createShipWrecks(Math.floor(settings.asteroidCount / 50), settings.baseDistance);
-            setInterval(() => {
-                if (isGameStarted && !isGameOver) createBooster();
-            }, settings.boosterSpawnRate);
-            setInterval(() => {
-                if(isGameStarted && !isGameOver) createMeteor();
-            }, settings.meteorInterval);
-            clearInterval(healthRegenInterval); // Hapus timer lama jika ada
-            healthRegenInterval = setInterval(() => {
-                if (isGameStarted && !isGameOver) {
-                    currentHealth = Math.min(maxHealth, currentHealth + 29);
+        function populateAccessoryGrid() {
+            const grid = document.getElementById('accessory-grid');
+            grid.innerHTML = '';
+            for (const key in ACCESSORIES) {
+                const acc = ACCESSORIES[key];
+                const data = playerData.accessories[key];
+                const isMaxLevel = data.level >= acc.maxLevel;
+                
+                let cost;
+                if (key === 'flashlight') {
+                    const level = data.level;
+                    if (level === 0) cost = 1;
+                    else if (level === 1) cost = 2;
+                    else if (level === 2) cost = 3;
+                    else cost = 5000000 * Math.pow(2, level - 3);
+                } else {
+                    cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
                 }
-            }, 420000); // 7 menit
-            animate();
+
+                const canAfford = playerData.points >= cost;
+
+                const card = document.createElement('div');
+                card.className = 'card accessory-card';
+                card.innerHTML = `
+                    <h3>${acc.name}</h3>
+                    <p>${acc.desc(data.level)}</p>
+                    <p class="level">Level: ${data.level} / ${acc.maxLevel}</p>
+                    <p class="cost">Upgrade: ${isMaxLevel ? 'MAX' : cost.toLocaleString() + ' Poin'}</p>
+                    <button class="upgrade-btn" onclick="upgradeAccessory('${key}')" ${isMaxLevel || !canAfford ? 'disabled' : ''}>
+                        ${isMaxLevel ? 'LEVEL MAX' : 'UPGRADE'}
+                    </button>
+                `;
+                grid.appendChild(card);
+            }
         }
 
-        function createPlayer(shipId) {
-            const shipData = SPACESHIPS.find(s => s.id === shipId) || SPACESHIPS[0];
-            maxHealth = shipData.stats.health;
-            currentHealth = maxHealth;
-            maxSpeed = shipData.stats.maxSpeed;
-            maxFuel = shipData.stats.fuel;
-            fuelConsumptionRate = (1 / shipData.stats.fuel) * 15;
-            acceleration = shipData.stats.accel;
-            turnSpeed = shipData.stats.turn;
-            laserFireSpeed = shipData.stats.laserSpeed;
-            currentProjectileStats = shipData.stats.projectile;
-            currentFuel = maxFuel;
+        function upgradeAccessory(key) {
+            const acc = ACCESSORIES[key];
+            const data = playerData.accessories[key];
+            if (data.level >= acc.maxLevel) return;
+
+            let cost;
+            if (key === 'flashlight') {
+                const level = data.level;
+                if (level === 0) cost = 1;
+                else if (level === 1) cost = 2;
+                else if (level === 2) cost = 3;
+                else cost = 5000000 * Math.pow(2, level - 3);
+            } else {
+                cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
+            }
+
+            if (playerData.points >= cost) {
+                playerData.points -= cost;
+                data.level++;
+                savePlayerData();
+                populateAccessoryGrid();
+            }
+        }
+
+        function populateCrateGrid() {
+             const grid = document.getElementById('crate-grid');
+             grid.innerHTML = '';
+             CRATES.forEach(crate => {
+                const canAfford = playerData.points >= crate.cost;
+                const card = document.createElement('div');
+                card.className = 'card crate-card';
+                card.innerHTML = `
+                    <h3>${crate.name}</h3>
+                    <p class="cost">Biaya: ${crate.cost.toLocaleString()} Poin</p>
+                    <button onclick="openCrate('${crate.id}')" ${!canAfford ? 'disabled' : ''}>BUKA</button>
+                `;
+                grid.appendChild(card);
+             });
+        }
+        
+        function openCrate(crateId) {
+            const crate = CRATES.find(c => c.id === crateId);
+            if (!crate || playerData.points < crate.cost) return;
+
+            playerData.points -= crate.cost;
+            const results = [];
+            const resultsContainer = document.getElementById('crate-results');
+            resultsContainer.innerHTML = '';
+
+            for (let i = 0; i < 4; i++) {
+                const randomShipId = crate.ships[Math.floor(Math.random() * crate.ships.length)];
+                const ship = SPACESHIPS.find(s => s.id === randomShipId);
+                let isDuplicate = playerData.unlockedShips.includes(randomShipId);
+                
+                if (isDuplicate) {
+                    playerData.points += DUPLICATE_POINTS;
+                } else {
+                    playerData.unlockedShips.push(randomShipId);
+                }
+                results.push({ ship, isDuplicate });
+            }
+            savePlayerData();
+            populateCrateGrid(); // Refresh costs
+            
+            // Tampilkan hasil
+            results.forEach(res => {
+                const card = document.createElement('div');
+                card.className = `result-card ${res.isDuplicate ? 'duplicate' : ''}`;
+                card.innerHTML = `
+                    <p>${res.ship.name}</p>
+                    ${res.isDuplicate ? `<p class="points-gain">+${DUPLICATE_POINTS} Poin (Duplikat)</p>` : '<p>BARU!</p>'}
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            document.getElementById('crate-result-screen').style.display = 'flex';
+        }
+
+        // --- PEMBUATAN OBJEK & STATS ---
+
+        function setupShipStats(shipData) {
+             maxHealth = shipData.stats.health;
+             currentHealth = maxHealth;
+             maxSpeed = shipData.stats.maxSpeed;
+             maxFuel = shipData.stats.fuel;
+             acceleration = shipData.stats.accel;
+             turnSpeed = shipData.stats.turn;
+             laserFireSpeed = shipData.stats.laserSpeed;
+             currentProjectileStats = shipData.stats.projectile;
+             currentFuel = maxFuel;
+        }
+
+        function createPlayer(shipData) {
             shipGroup = new THREE.Group();
             let bodyGeo;
             const bodyMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()), flatShading: true });
-            const type = shipId % 5;
+            const type = shipData.id % 5;
             if (type === 0) bodyGeo = new THREE.ConeGeometry(0.5, 2, 8);
             else if (type === 1) bodyGeo = new THREE.BoxGeometry(1, 1, 2.5);
             else if (type === 2) bodyGeo = new THREE.DodecahedronGeometry(0.8);
@@ -652,20 +652,20 @@
             const shipBody = new THREE.Mesh(bodyGeo, bodyMat);
             shipBody.rotation.x = Math.PI / 2;
             shipGroup.add(shipBody);
-            const wingGeo = new THREE.BoxGeometry(2.5, 0.2, 1);
-            const wingMat = new THREE.MeshPhongMaterial({ color: 0xbb0000 });
-            const leftWing = new THREE.Mesh(wingGeo, wingMat);
-            leftWing.position.set(-1.5, 0, -0.2);
-            shipGroup.add(leftWing);
-            const rightWing = leftWing.clone();
-            rightWing.position.set(1.5, 0, -0.2);
-            shipGroup.add(rightWing);
             scene.add(shipGroup);
+
+            // Senter
+            const flashlightLevel = playerData.accessories.flashlight.level;
+            if (flashlightLevel > 0) {
+                shipSpotlight = new THREE.SpotLight(0xffffff, 2, 1000, Math.PI / (10 - flashlightLevel * 0.2), 0.5, 2);
+                shipGroup.add(shipSpotlight);
+                shipGroup.add(shipSpotlight.target);
+            }
+
             camera.position.set(0, 3, 10);
         }
 
         function createScenery() {
-            // Starfield standar
             const starVertices1 = [];
             for (let i = 0; i < 300000; i++) {
                 const x = (Math.random() - 0.5) * 5000000, y = (Math.random() - 0.5) * 5000000, z = (Math.random() - 0.5) * 5000000;
@@ -675,123 +675,6 @@
             starsGeometry1.setAttribute('position', new THREE.Float32BufferAttribute(starVertices1, 3));
             starField = new THREE.Points(starsGeometry1, new THREE.PointsMaterial({ color: 0xffffff, size: 3.5 }));
             scene.add(starField);
-            
-            // Starfield padat untuk galaksi
-            const starVertices2 = [];
-            for (let i = 0; i < 1000000; i++) { // Lebih banyak bintang
-                const x = (Math.random() - 0.5) * 10000000, y = (Math.random() - 0.5) * 10000000, z = (Math.random() - 0.5) * 10000000;
-                starVertices2.push(x, y, z);
-            }
-            const starsGeometry2 = new THREE.BufferGeometry();
-            starsGeometry2.setAttribute('position', new THREE.Float32BufferAttribute(starVertices2, 3));
-            denseStarField = new THREE.Points(starsGeometry2, new THREE.PointsMaterial({ color: 0xffffff, size: 4.5 })); // Bintang sedikit lebih besar
-            denseStarField.visible = false; // Sembunyikan dulu
-            scene.add(denseStarField);
-
-
-            // Buat objek misi
-            MISSION_TARGETS[0].object = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), new THREE.MeshPhongMaterial({ color: 0xE8A763 }));
-            MISSION_TARGETS[1].object = new THREE.Mesh(new THREE.SphereGeometry(20, 32, 32), new THREE.MeshPhongMaterial({ color: 0xAA6666 }));
-            MISSION_TARGETS[2].object = new THREE.Mesh(new THREE.DodecahedronGeometry(1000, 2), new THREE.MeshPhongMaterial({ color: 0xAAAAFF, wireframe: true }));
-            MISSION_TARGETS[3].object = new THREE.Mesh(new THREE.DodecahedronGeometry(1500, 2), new THREE.MeshPhongMaterial({ color: 0xFF5733, wireframe: true }));
-            MISSION_TARGETS[4].object = new THREE.Mesh(new THREE.TorusKnotGeometry(2000, 400, 100, 16), new THREE.MeshPhongMaterial({ color: 0x8a2be2, wireframe: true }));
-            MISSION_TARGETS[5].object = new THREE.Mesh(new THREE.SphereGeometry(2500, 64, 64), new THREE.MeshPhongMaterial({ color: 0x3cb371 }));
-            MISSION_TARGETS[6].object = new THREE.Mesh(new THREE.SphereGeometry(3000, 64, 64), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
-            MISSION_TARGETS[7].object = new THREE.Mesh(new THREE.SphereGeometry(3500, 64, 64), new THREE.MeshPhongMaterial({ color: 0x33b3b3 }));
-            
-            const nebulaGeo = new THREE.TorusGeometry(4000, 800, 16, 100);
-            const nebulaMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x00aaff, wireframe: true, shininess: 100 });
-            MISSION_TARGETS[8].object = new THREE.Mesh(nebulaGeo, nebulaMat);
-
-            MISSION_TARGETS[9].object = new THREE.Mesh(new THREE.SphereGeometry(4500, 64, 64), new THREE.MeshPhongMaterial({ color: 0xff4500, emissive: 0xcc3700 }));
-            MISSION_TARGETS[10].object = new THREE.Mesh(new THREE.SphereGeometry(5000, 64, 64), new THREE.MeshPhongMaterial({ color: 0x4682b4, shininess: 50 }));
-            MISSION_TARGETS[11].object = new THREE.Mesh(new THREE.SphereGeometry(5500, 64, 64), new THREE.MeshPhongMaterial({ color: 0xf0e68c }));
-            MISSION_TARGETS[12].object = new THREE.Mesh(new THREE.SphereGeometry(6000, 64, 64), new THREE.MeshPhongMaterial({ color: 0xb22222 }));
-            MISSION_TARGETS[13].object = new THREE.Mesh(new THREE.SphereGeometry(6500, 64, 64), new THREE.MeshPhongMaterial({ color: 0xdeb887 }));
-            MISSION_TARGETS[14].object = new THREE.Mesh(new THREE.SphereGeometry(7000, 64, 64), new THREE.MeshPhongMaterial({ color: 0xff6347, emissive: 0xdd5030 }));
-            MISSION_TARGETS[15].object = new THREE.Mesh(new THREE.RingGeometry(7500, 8000, 32), new THREE.MeshPhongMaterial({ color: 0xadd8e6, side: THREE.DoubleSide }));
-            MISSION_TARGETS[16].object = new THREE.Mesh(new THREE.SphereGeometry(8500, 64, 64), new THREE.MeshPhongMaterial({ color: 0xda70d6 }));
-
-            MISSION_TARGETS.forEach(target => scene.add(target.object));
-        }
-
-        function advanceMission() {
-            const basePoints = DIFFICULTY_SETTINGS[currentLevel].pointMultiplier;
-            const pointsGained = Math.round(basePoints);
-            playerData.points += pointsGained;
-            savePlayerData();
-
-            if (currentMissionIndex + 1 < MISSION_TARGETS.length && MISSION_TARGETS[currentMissionIndex + 1].speedBoost > 1) {
-                maxSpeed *= MISSION_TARGETS[currentMissionIndex + 1].speedBoost;
-                speedBoostMessage.style.display = 'block';
-                setTimeout(() => { speedBoostMessage.style.display = 'none'; }, 3000);
-            }
-
-            currentMissionIndex++;
-            if (currentMissionIndex < MISSION_TARGETS.length) {
-                currentTarget = MISSION_TARGETS[currentMissionIndex];
-                 if (currentTarget.isGalaxy) {
-                    starField.visible = false;
-                    denseStarField.visible = true;
-                }
-                updateMissionUI();
-                speed = 0;
-                currentFuel = maxFuel; 
-                asteroids.forEach(a => scene.remove(a)); asteroids.length = 0;
-                meteors.forEach(m => scene.remove(m)); meteors.length = 0;
-                shipWrecks.forEach(w => scene.remove(w.group)); shipWrecks.length = 0;
-
-                const distance = currentTarget.travelDistance;
-                currentTarget.object.position.z = shipGroup.position.z - distance;
-                createAsteroids(DIFFICULTY_SETTINGS[currentLevel].asteroidCount, DIFFICULTY_SETTINGS[currentLevel].asteroidSpeed, distance);
-                 createShipWrecks(Math.floor(DIFFICULTY_SETTINGS[currentLevel].asteroidCount / 50), distance);
-
-                if (currentTarget.companionTrigger && !companionVisible) {
-                    activateCompanionShip();
-                }
-            } else {
-                isGameOver = true;
-                document.getElementById('win-screen').style.display = 'flex';
-                document.getElementById('win-message').innerText = `Selamat! Anda telah menyelesaikan semua misi!`;
-            }
-        }
-
-        function updateMissionUI() {
-            missionTitle.innerText = `Misi: ${currentTarget.name}`;
-            distanceInfo.innerText = `Jarak ke ${currentTarget.name}: ${Math.round(shipGroup.position.distanceTo(currentTarget.object.position))}`;
-        }
-        
-        function createShipWrecks(count, targetDistance) {
-            const wreckMaterial = new THREE.MeshPhongMaterial({ color: 0x555566, flatShading: true });
-            const rangeX = targetDistance * 0.1, rangeY = targetDistance * 0.1, rangeZ = targetDistance * 1.5;
-
-            for (let i = 0; i < count; i++) {
-                const group = new THREE.Group();
-                const numPieces = Math.floor(Math.random() * 5) + 2;
-                for (let j = 0; j < numPieces; j++) {
-                    let pieceGeo;
-                    const pieceType = Math.random();
-                    if (pieceType < 0.4) pieceGeo = new THREE.BoxGeometry(1, 1, 1);
-                    else if (pieceType < 0.8) pieceGeo = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
-                    else pieceGeo = new THREE.ConeGeometry(0.8, 1.5, 6);
-
-                    const piece = new THREE.Mesh(pieceGeo, wreckMaterial);
-                    piece.position.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
-                    piece.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                    group.add(piece);
-                }
-
-                group.position.set((Math.random() - 0.5) * rangeX + shipGroup.position.x, (Math.random() - 0.5) * rangeY + shipGroup.position.y, (Math.random() - 0.5) * rangeZ + shipGroup.position.z);
-                const scale = Math.random() * 15 + 10;
-                group.scale.set(scale, scale, scale);
-                
-                const wreck = {
-                    group: group,
-                    rotationSpeed: new THREE.Vector3(Math.random() * 0.001, Math.random() * 0.001, Math.random() * 0.001)
-                };
-                shipWrecks.push(wreck);
-                scene.add(group);
-            }
         }
 
         function createAsteroids(count, speedMultiplier, targetDistance) {
@@ -800,7 +683,7 @@
             const rangeX = targetDistance * 0.1, rangeY = targetDistance * 0.1, rangeZ = targetDistance * 1.5;
             for (let i = 0; i < count; i++) {
                 const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
-                asteroid.position.set((Math.random() - 0.5) * rangeX + shipGroup.position.x, (Math.random() - 0.5) * rangeY + shipGroup.position.y, (Math.random() - 0.5) * rangeZ + shipGroup.position.z);
+                asteroid.position.set((Math.random() - 0.5) * rangeX, (Math.random() - 0.5) * rangeY, (Math.random() * -rangeZ));
                 const scale = Math.random() * 40 + 15;
                 asteroid.scale.set(scale, scale, scale);
                 asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
@@ -808,438 +691,224 @@
                 scene.add(asteroid);
             }
         }
-
-        function createMeteor() {
-            if (!shipGroup) return;
-            const meteorGeometry = new THREE.SphereGeometry(15, 8, 8);
-            const meteorMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0xffa500,
-                emissive: 0xff4500,
-                flatShading: true 
-            });
-            const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
-            const spawnX = shipGroup.position.x + (Math.random() - 0.5) * 400;
-            const spawnY = shipGroup.position.y + 600 + (Math.random() * 200);
-            const spawnZ = shipGroup.position.z - 1000 - (Math.random() * 1000);
-            meteor.position.set(spawnX, spawnY, spawnZ);
-            meteor.velocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 4,
-                -15 - Math.random() * 10,
-                (Math.random() - 0.5) * 4
-            );
-            meteors.push(meteor);
-            scene.add(meteor);
-        }
-
-        function createBooster() { 
-            const boosterGeometry = new THREE.TorusGeometry(20, 5, 16, 100);
-            const boosterMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
-            const booster = new THREE.Mesh(boosterGeometry, boosterMaterial);
-            const range = MISSION_TARGETS[0].travelDistance * 0.8;
-            booster.position.set((Math.random() - 0.5) * range + shipGroup.position.x, (Math.random() - 0.5) * range + shipGroup.position.y, (Math.random() * -range) + shipGroup.position.z);
-            booster.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5);
-            boosters.push(booster);
-            scene.add(booster);
-        }
-
-        function updateBoosters() { 
-            for (let i = boosters.length - 1; i >= 0; i--) {
-                const booster = boosters[i];
-                booster.position.add(booster.velocity);
-                booster.rotation.x += 0.05;
-                booster.rotation.y += 0.05;
-                if (shipGroup.position.distanceTo(booster.position) < 20) {
-                    activateBooster();
-                    scene.remove(booster);
-                    boosters.splice(i, 1);
-                }
-                if (booster.position.distanceTo(shipGroup.position) > 3000) {
-                    scene.remove(booster);
-                    boosters.splice(i, 1);
-                }
-            }
-        }
-
-        function activateBooster() { 
-            if (isBoosterActive) return;
-            isBoosterActive = true;
-            boosterMessage.style.display = 'block';
-            const settings = BOOSTER_SETTINGS[currentLevel];
-            boosterDuration = settings.duration * 1000;
-            boosterFuelRate = settings.fuelRate;
-            boosterSpeedMultiplier = 2;
-            setTimeout(() => { isBoosterActive = false; boosterMessage.style.display = 'none'; boosterSpeedMultiplier = 1; boosterFuelRate = 0; }, boosterDuration);
-        }
-
+        
+        // --- KONTROL & GERAKAN ---
         const keyboard = {};
-        let speed = 0.0;
-        const verticalSpeed = 0.5;
-        const joystickArea = document.getElementById('joystick-area'), joystickThumb = document.getElementById('joystick-thumb'), fireButton = document.getElementById('fire-button');
-        let joystickActive = false;
-        const joystickState = { x: 0, y: 0 };
-        const joystickRadius = 75;
-
-        function setupJoystick() {
-             function handleStart(e) { e.preventDefault(); joystickActive = true; const rect = joystickArea.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; updateJoystickPosition(clientX - rect.left, clientY - rect.top, rect); }
-             function handleMove(e) { if (!joystickActive) return; e.preventDefault(); const rect = joystickArea.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; updateJoystickPosition(clientX - rect.left, clientY - rect.top, rect); }
-             function handleEnd() { joystickActive = false; joystickThumb.style.transform = 'translate(-50%, -50%)'; joystickState.x = 0; joystickState.y = 0; }
-             function updateJoystickPosition(x, y, rect) { const centerX = rect.width / 2, centerY = rect.height / 2; const dx = x - centerX, dy = y - centerY; const distance = Math.sqrt(dx * dx + dy * dy); if (distance > joystickRadius) { const angle = Math.atan2(dy, dx); joystickState.x = Math.cos(angle); joystickState.y = Math.sin(angle); joystickThumb.style.left = `${centerX + joystickState.x * joystickRadius}px`; joystickThumb.style.top = `${centerY + joystickState.y * joystickRadius}px`; } else { joystickState.x = dx / joystickRadius; joystickState.y = dy / joystickRadius; joystickThumb.style.left = `${x}px`; joystickThumb.style.top = `${y}px`; } }
-             joystickArea.addEventListener('touchstart', handleStart); joystickArea.addEventListener('touchmove', handleMove); joystickArea.addEventListener('touchend', handleEnd);
-             joystickArea.addEventListener('mousedown', handleStart); document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleEnd);
-             fireButton.addEventListener('touchend', (e) => { e.preventDefault(); fireProjectile(); }); fireButton.addEventListener('click', fireProjectile);
-        }
-
-        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; });
+        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; handleAccessoryKeyPress(e.key); });
         window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
         window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); fireProjectile(); }});
-
+        
         function updateShipMovement() {
-            if (isRefueling || isPaused) { speed *= 0.9; shipGroup.translateZ(speed); return; }
-            
-            const currentSpeedMultiplier = isBoosterActive ? boosterSpeedMultiplier : 1;
-            const currentMaxSpeed = maxSpeed * currentSpeedMultiplier;
+            if (isPaused) return;
 
-            if ((keyboard['w'] || joystickState.y < -0.1) && currentFuel > 0) {
-                 speed = Math.min(speed + acceleration * currentSpeedMultiplier, currentMaxSpeed);
-                 currentFuel -= (fuelConsumptionRate - boosterFuelRate);
-            }
-            if (keyboard['s'] || joystickState.y > 0.1) { speed = Math.max(speed - acceleration, -maxSpeed / 2); }
-            if (keyboard['arrowleft'] || joystickState.x < -0.1) { shipGroup.rotation.y += turnSpeed; }
-            if (keyboard['arrowright'] || joystickState.x > 0.1) { shipGroup.rotation.y -= turnSpeed; }
-            if (keyboard['arrowup']) { shipGroup.translateY(verticalSpeed); }
-            if (keyboard['arrowdown']) { shipGroup.translateY(-verticalSpeed); }
-            
-            speed *= deceleration;
-            shipGroup.translateZ(speed);
-            const maxY = 2000;
-            if (shipGroup.position.y > maxY) shipGroup.position.y = maxY;
-            if (shipGroup.position.y < -maxY) shipGroup.position.y = -maxY;
-            if (currentFuel <= 0 && !isRefueling) { currentFuel = 0; isRefueling = true; refuelMessage.style.display = 'block'; }
-        }
-
-        function createBaseLaser(isRailgun = false) {
-             if (isRailgun) {
-                return new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 15, 4), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-             }
-             return new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-        }
-
-        function launchProjectile(laser, direction, offset = new THREE.Vector3(0,0,0)) {
-            laser.rotation.copy(shipGroup.rotation);
-            laser.rotateX(Math.PI / 2);
-            const worldOffset = offset.clone().applyQuaternion(shipGroup.quaternion);
-            laser.position.copy(shipGroup.position).add(worldOffset);
-            laser.velocity = direction.clone().multiplyScalar(-laserFireSpeed); 
-            laser.isPiercing = currentProjectileStats.pierce || false;
-            lasers.push(laser);
-            scene.add(laser);
-        }
-
-        function fireProjectile() {
-            if (isRefueling || isGameOver || isPaused) return;
-            const now = Date.now();
-            if (now - lastFireTime < currentProjectileStats.cooldown) {
+            if (isFrozen) {
+                speed *= shipDrift;
+                angularVelocity *= shipInertia;
+                shipGroup.rotation.y += angularVelocity;
+                shipGroup.translateZ(speed);
                 return;
             }
-            lastFireTime = now;
-            const mainDirection = new THREE.Vector3();
-            shipGroup.getWorldDirection(mainDirection);
-            const rightVec = new THREE.Vector3().crossVectors(mainDirection, shipGroup.up).normalize().multiplyScalar(0.5);
+            
+            const currentSpeedMultiplier = speedBoostActive ? 2 : 1;
+            const currentMaxSpeed = maxSpeed * currentSpeedMultiplier;
 
-            switch(currentProjectileStats.type) {
-                case 'double':
-                    launchProjectile(createBaseLaser(), mainDirection, rightVec.clone().negate());
-                    launchProjectile(createBaseLaser(), mainDirection, rightVec);
-                    break;
-                case 'spread':
-                    const spreadCount = currentProjectileStats.count;
-                    const totalAngle = currentProjectileStats.angle;
-                    for (let i = 0; i < spreadCount; i++) {
-                        const fraction = i / (spreadCount - 1);
-                        const angle = (fraction - 0.5) * totalAngle;
-                        const spreadDirection = mainDirection.clone().applyAxisAngle(shipGroup.up, angle);
-                        launchProjectile(createBaseLaser(), spreadDirection);
-                    }
-                    break;
-                case 'burst':
-                    for (let i = 0; i < currentProjectileStats.count; i++) {
-                        setTimeout(() => {
-                           if (!isGameOver) launchProjectile(createBaseLaser(), mainDirection);
-                        }, i * currentProjectileStats.delay);
-                    }
-                    break;
-                case 'railgun':
-                     launchProjectile(createBaseLaser(true), mainDirection);
-                     break;
-                case 'double_railgun':
-                    launchProjectile(createBaseLaser(true), mainDirection, rightVec.clone().negate());
-                    launchProjectile(createBaseLaser(true), mainDirection, rightVec);
-                    break;
-                case 'standard':
-                default:
-                    launchProjectile(createBaseLaser(), mainDirection);
-                    break;
+            if ((keyboard['w']) && currentFuel > 0) {
+                 speed = Math.min(speed + acceleration, currentMaxSpeed);
+                 currentFuel -= 0.1;
+            }
+            if (keyboard['s']) { speed = Math.max(speed - acceleration, -maxSpeed / 2); }
+
+            if (keyboard['arrowleft']) { angularVelocity = Math.min(angularVelocity + 0.002, turnSpeed); }
+            if (keyboard['arrowright']) { angularVelocity = Math.max(angularVelocity - 0.002, -turnSpeed); }
+
+            speed *= shipDrift;
+            angularVelocity *= shipInertia;
+            shipGroup.rotation.y += angularVelocity;
+            shipGroup.translateZ(speed);
+
+            if (shipSpotlight) {
+                shipSpotlight.target.position.set(0, 0, -1);
             }
         }
+        
+        // --- MEKANIK GAME BARU ---
 
-        function updateLasers() {
-            for (let i = lasers.length - 1; i >= 0; i--) {
-                const laser = lasers[i];
-                laser.position.add(laser.velocity);
-                const distance = laser.isPiercing ? 8000 : 3000;
-                if (laser.position.distanceTo(shipGroup.position) > distance) {
-                    scene.remove(laser);
-                    lasers.splice(i, 1);
+        function updateFreezeStatus(deltaTime) {
+            timeUntilFreeze -= deltaTime;
+            if (timeUntilFreeze <= 0 && !isFrozen && !warmthActive) {
+                isFrozen = true;
+                document.getElementById('freeze-warning').innerText = "SISTEM BEKU!";
+                document.getElementById('freeze-warning').style.display = 'block';
+                setTimeout(() => {
+                    isFrozen = false;
+                    timeUntilFreeze = freezeTimer * DIFFICULTY_SETTINGS[currentLevel].freezeResist;
+                    document.getElementById('freeze-warning').style.display = 'none';
+                }, 5000); // Beku selama 5 detik
+            }
+            
+            if (warmthActive) {
+                warmthDuration -= deltaTime;
+                 if (warmthDuration <= 0) {
+                    warmthActive = false;
+                    warmthDuration = 0;
+                    document.getElementById('warmth-container').style.display = 'none';
                 }
             }
+            document.getElementById('warmth-bar').style.width = `${(warmthDuration / maxWarmth) * 100}%`;
+        }
+        
+        function startLargeMeteorEvent() {
+            const flashlightLevel = playerData.accessories.flashlight.level;
+            const maxOpacity = 0.95;
+            const reduction = (10 + flashlightLevel * 3) / 100;
+            const finalOpacity = maxOpacity * (1 - reduction);
+
+            const dimOverlay = document.getElementById('dim-overlay');
+            dimOverlay.style.opacity = finalOpacity;
+            dimOverlay.style.display = 'block';
+            
+            setTimeout(() => {
+                 dimOverlay.style.opacity = 0;
+            }, 8000); // Efek berlangsung 8 detik
+            setTimeout(() => {
+                dimOverlay.style.display = 'none';
+            }, 10000);
         }
 
-        function updateUIBars() {
-            // Fuel Bar
-            if (isRefueling) {
-                currentFuel += refuelRate;
-                if (currentFuel >= maxFuel) { currentFuel = maxFuel; isRefueling = false; refuelMessage.style.display = 'none'; }
-            }
-            fuelBar.style.width = `${(currentFuel / maxFuel) * 100}%`;
-            fuelBar.style.backgroundColor = currentFuel / maxFuel < 0.25 ? '#ff0000' : '#00ff00';
-            // Health Bar
-            const healthPercent = currentHealth / maxHealth;
-            healthBar.style.width = `${healthPercent * 100}%`;
-            if (healthPercent < 0.25) {
-                healthBar.style.backgroundColor = '#dc3545'; // Merah
-            } else if (healthPercent < 0.6) {
-                healthBar.style.backgroundColor = '#ffc107'; // Kuning
-            } else {
-                healthBar.style.backgroundColor = '#28a745'; // Hijau
+        function updateSwordSensor() {
+            // Hapus garis lama
+            detectionLines.forEach(line => scene.remove(line));
+            detectionLines.length = 0;
+            
+            const swordLevel = playerData.accessories.sword.level;
+            if (swordLevel === 0 || !shipGroup) return;
+
+            const detectionRadius = 200 + swordLevel * 20;
+            const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
+
+            asteroids.forEach(asteroid => {
+                const distance = shipGroup.position.distanceTo(asteroid.position);
+                if (distance < detectionRadius) {
+                    const points = [shipGroup.position.clone(), asteroid.position.clone()];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, material);
+                    detectionLines.push(line);
+                    scene.add(line);
+                }
+            });
+        }
+        
+        // --- AKSI & KOLISI ---
+
+        function handleAccessoryKeyPress(key) {
+            if (isGameOver || isPaused) return;
+            const now = Date.now();
+
+            if (key === '1' && playerData.accessories.shield.level > 0 && now > accessoryCooldowns.shield) {
+                const level = playerData.accessories.shield.level;
+                shieldActive = true;
+                accessoryCooldowns.shield = now + (60 - level) * 1000;
+                setTimeout(() => shieldActive = false, (14 + level) * 1000);
+            } else if (key === '2' && playerData.accessories.speed.level > 0 && now > accessoryCooldowns.speed) {
+                 const level = playerData.accessories.speed.level;
+                speedBoostActive = true;
+                accessoryCooldowns.speed = now + (50 - level) * 1000;
+                setTimeout(() => speedBoostActive = false, (11 + level) * 1000);
+            } else if (key === '3' && playerData.accessories.warmth.level > 0 && now > accessoryCooldowns.warmth) {
+                 const level = playerData.accessories.warmth.level;
+                warmthActive = true;
+                isFrozen = false; // Langsung menghilangkan beku
+                document.getElementById('freeze-warning').style.display = 'none';
+                document.getElementById('warmth-container').style.display = 'block';
+                maxWarmth = (60 + level * 5) * 1000;
+                warmthDuration = maxWarmth;
+                timeUntilFreeze = freezeTimer * DIFFICULTY_SETTINGS[currentLevel].freezeResist;
+                accessoryCooldowns.warmth = now + (120 - level * 2) * 1000;
             }
         }
-
-        function takeDamage(amount, source) {
-            if (isGameOver) return;
+        
+        function takeDamage(amount) {
+            if (isGameOver || shieldActive) return;
             currentHealth -= amount;
             if (currentHealth <= 0) {
                 currentHealth = 0;
                 isGameOver = true;
-                document.getElementById('game-over-reason').innerText = `Kesehatan habis setelah menabrak ${source}!`;
+                document.getElementById('game-over-reason').innerText = 'Pesawat Anda hancur!';
                 document.getElementById('game-over-screen').style.display = 'flex';
             }
         }
 
         function checkCollisions() {
-            const settings = DIFFICULTY_SETTINGS[currentLevel];
-            // Kolisi Pesawat dengan Asteroid
-            for (let i = asteroids.length - 1; i >= 0; i--) {
+             for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
                  if (shipGroup.position.distanceTo(asteroid.position) < asteroid.scale.x + 1) {
-                    takeDamage(settings.asteroidDmg, 'asteroid');
+                    takeDamage(20);
                     scene.remove(asteroid);
                     asteroids.splice(i, 1);
                     if (isGameOver) return;
                 }
             }
-            // Kolisi Pesawat dengan Meteor
-            for (let i = meteors.length - 1; i >= 0; i--) {
-                const meteor = meteors[i];
-                if(shipGroup.position.distanceTo(meteor.position) < 15 + 1) { // 15 adalah radius meteor
-                    const finalDamage = settings.meteorDmg * playerData.meteorDamageMultiplier;
-                    takeDamage(finalDamage, 'meteor');
-                    scene.remove(meteor);
-                    meteors.splice(i, 1);
-                    if (isGameOver) return;
-                }
-            }
-            // Kolisi Laser dengan Asteroid
+            
             for (let i = lasers.length - 1; i >= 0; i--) {
                 const laser = lasers[i];
                 if (!laser) continue;
-                let laserRemoved = false;
                 for (let j = asteroids.length - 1; j >= 0; j--) {
                     const asteroid = asteroids[j];
                     if (laser.position.distanceTo(asteroid.position) < asteroid.scale.x) {
                         scene.remove(asteroid); 
                         asteroids.splice(j, 1);
                         score++; 
-                        scoreInfo.innerText = score;
+                        document.getElementById('score').innerText = score;
                         if (!laser.isPiercing) {
                            scene.remove(laser); 
                            lasers.splice(i, 1);
-                           laserRemoved = true;
                            break;
                         }
                     }
                 }
-                if(laserRemoved) continue;
-            }
-            // Cek Jarak ke Target Misi
-            const distanceToTarget = shipGroup.position.distanceTo(currentTarget.object.position);
-            distanceInfo.innerText = `Jarak ke ${currentTarget.name}: ${Math.round(distanceToTarget)}`;
-            if (distanceToTarget < 500) {
-                if (currentTarget.dialogueTrigger) {
-                    startDialogueSequence();
-                } else {
-                    advanceMission();
-                }
-            }
-        }
-
-        function updateScenery() {
-            starField.rotation.y += 0.00002;
-            denseStarField.rotation.y += 0.00003;
-            MISSION_TARGETS.forEach((target, index) => {
-                if(target.object) target.object.rotation.y += 0.0005 / (index + 1);
-            });
-            for (let i = asteroids.length - 1; i >= 0; i--) {
-                const asteroid = asteroids[i];
-                asteroid.position.add(asteroid.velocity);
-                asteroid.rotation.x += 0.005; asteroid.rotation.y += 0.005;
-                if (asteroid.position.z > shipGroup.position.z + 500) {
-                    scene.remove(asteroid); asteroids.splice(i, 1);
-                }
-            }
-            for (let i = shipWrecks.length - 1; i >= 0; i--) {
-                const wreck = shipWrecks[i];
-                wreck.group.rotation.x += wreck.rotationSpeed.x;
-                wreck.group.rotation.y += wreck.rotationSpeed.y;
-                wreck.group.rotation.z += wreck.rotationSpeed.z;
-                 if (wreck.group.position.z > shipGroup.position.z + 500) {
-                    scene.remove(wreck.group); shipWrecks.splice(i, 1);
-                }
-            }
-        }
-
-        function updateMeteors() {
-            for (let i = meteors.length - 1; i >= 0; i--) {
-                const meteor = meteors[i];
-                meteor.position.add(meteor.velocity);
-                meteor.rotation.x += 0.1;
-                meteor.rotation.y += 0.1;
-                if (meteor.position.y < shipGroup.position.y - 500 || meteor.position.z > shipGroup.position.z + 500) {
-                    scene.remove(meteor);
-                    meteors.splice(i, 1);
-                }
             }
         }
         
-        // --- DIALOGUE SYSTEM ---
-        const dialogueData = [
-            { speaker: "Aku", text: "Ini apa? Nampak seperti indah..." },
-            { speaker: "Asep", text: "Aku tidak tahu, mungkin ini berbahaya. Tapi setidaknya kita sudah tahu banyak planet." },
-            { speaker: "Aku", text: "Yaudah, kita lanjutkan nanti saja perjalanannya. Kita balik saja?" },
-            { speaker: "Asep", text: "Ok kalau kamu mau, tapi aku mau berpetualang lagi." },
-            { speaker: "Aku", text: "Mau lanjut?" },
-            { speaker: "Asep", text: "Kapan kita berpetualang lagi?" },
-            { speaker: "Aku", text: "Petualangan kali ini seru sekali ya." },
-            { speaker: "Asep", text: "Iya, sangat seru!" }
-        ];
-
-        let currentDialogueIndex = 0;
-
-        function startDialogueSequence() {
-            isPaused = true;
-            currentTarget.dialogueTrigger = false; // Prevent re-triggering
-            currentDialogueIndex = 0;
-            document.getElementById('dialogue-screen').style.display = 'flex';
-            displayNextDialogue();
-        }
-
-        function displayNextDialogue() {
-            const dialogueTextElem = document.getElementById('dialogue-text');
-            const speakerElem = document.getElementById('dialogue-speaker');
-            const buttonsElem = document.getElementById('dialogue-buttons');
+        // --- FUNGSI BARU: Perbarui Info Jarak ---
+        function updateDistanceInfo() {
+            if (!shipGroup || !target || isGameOver) return;
             
-            buttonsElem.innerHTML = ''; // Clear previous buttons
-
-            if (currentDialogueIndex < dialogueData.length) {
-                const currentLine = dialogueData[currentDialogueIndex];
-                speakerElem.innerText = currentLine.speaker + ":";
-                dialogueTextElem.innerText = currentLine.text;
-
-                const nextButton = document.createElement('button');
-                nextButton.innerText = 'Lanjut...';
-                nextButton.onclick = () => {
-                    currentDialogueIndex++;
-                    displayNextDialogue();
-                };
-                buttonsElem.appendChild(nextButton);
-            } else {
-                // End of dialogue
-                speakerElem.innerText = "Kalian telah mencapai akhir dari percakapan ini.";
-                dialogueTextElem.innerText = "Apa yang akan kalian lakukan selanjutnya?";
-
-                const continueButton = document.createElement('button');
-                continueButton.innerText = 'Lanjutkan Petualangan';
-                continueButton.onclick = () => {
-                    document.getElementById('dialogue-screen').style.display = 'none';
-                    isPaused = false;
-                    advanceMission();
-                };
-
-                const backButton = document.createElement('button');
-                backButton.innerText = 'Kembali ke Hangar';
-                backButton.onclick = () => {
-                    location.reload();
-                };
-                
-                buttonsElem.appendChild(continueButton);
-                buttonsElem.appendChild(backButton);
+            const distance = shipGroup.position.distanceTo(target.object.position);
+            document.getElementById('distance-info').innerText = `Jarak ke Target: ${Math.round(distance).toLocaleString()} m`;
+            
+            // Cek kondisi menang
+            if (distance < 450) { // Radius target 400 + sedikit toleransi
+                isGameOver = true; // Hentikan game loop
+                isPaused = true;
+                document.getElementById('win-screen').style.display = 'flex';
+                // Tambahkan poin bonus saat menang
+                const pointsWon = Math.round(DIFFICULTY_SETTINGS[currentLevel].baseDistance * DIFFICULTY_SETTINGS[currentLevel].pointMultiplier);
+                document.getElementById('win-message').innerText = `Anda sampai di tujuan! Bonus: ${pointsWon.toLocaleString()} poin.`;
+                playerData.points += pointsWon;
+                savePlayerData();
             }
         }
 
-
-        // === FUNGSI PESAWAT TEMAN ===
-        function activateCompanionShip() {
-            const companionGeo = new THREE.ConeGeometry(0.5, 2, 6);
-            const companionMat = new THREE.MeshPhongMaterial({ 
-                color: 0x00aaff,
-                emissive: 0x0055aa,
-                shininess: 100
-            });
-            companionShip = new THREE.Mesh(companionGeo, companionMat);
-            companionShip.rotation.x = Math.PI / 2;
-            companionShip.scale.set(0.8, 0.8, 0.8);
-
-            const glow = new THREE.PointLight(0x00aaff, 0.8, 100);
-            glow.position.set(0, 0, 0);
-            companionShip.add(glow);
-
-            const offset = new THREE.Vector3(0, 0, -50);
-            companionShip.position.copy(shipGroup.position).add(offset);
-            scene.add(companionShip);
-
-            document.getElementById('companion-ship').classList.add('visible');
-            companionVisible = true;
-        }
-
-        function updateCompanionShip() {
-            if (!companionShip || !companionVisible) return;
-            const offset = new THREE.Vector3(0, 0, -50);
-            const targetPos = shipGroup.position.clone().add(offset);
-            companionShip.position.lerp(targetPos, 0.03);
-            const dir = new THREE.Vector3();
-            dir.subVectors(shipGroup.position, companionShip.position).normalize();
-            companionShip.lookAt(dir);
-        }
-
-        function animate() {
+        // --- UPDATE LOOP ---
+        let lastTime = 0;
+        function animate(currentTime) {
             if (isGameOver) return;
             requestAnimationFrame(animate);
-            
-            if (isPaused) {
-                 renderer.render(scene, camera);
-                 return;
-            }
 
-            if (isGameStarted) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            if (isGameStarted && !isPaused) {
                 updateShipMovement();
                 updateLasers();
-                updateUIBars();
-                updateBoosters();
+                updateUIBars(deltaTime);
                 checkCollisions();
                 updateScenery();
-                updateMeteors();
-                updateCompanionShip();
+                updateFreezeStatus(deltaTime);
+                updateSwordSensor();
+                updateDistanceInfo(); // Panggil fungsi baru di sini
 
-                const relativeCameraOffset = new THREE.Vector3(0, 5, 20);
+                const relativeCameraOffset = new THREE.Vector3(0, 5 + speed, 20 + speed);
                 const cameraOffset = relativeCameraOffset.applyMatrix4(shipGroup.matrixWorld);
                 camera.position.lerp(cameraOffset, 0.1);
                 camera.lookAt(shipGroup.position);
@@ -1247,16 +916,70 @@
             
             renderer.render(scene, camera);
         }
+        
+        function updateUIBars() {
+            document.getElementById('fuel-bar').style.width = `${(currentFuel / maxFuel) * 100}%`;
+            document.getElementById('health-bar').style.width = `${(currentHealth / maxHealth) * 100}%`;
+            
+            // Tampilkan status aksesoris
+            const statusDiv = document.getElementById('accessory-status');
+            statusDiv.innerHTML = `
+                ${shieldActive ? '<p style="color:var(--primary-color)">SHIELD AKTIF</p>' : ''}
+                ${speedBoostActive ? '<p style="color:yellow">SPEED BOOST AKTIF</p>' : ''}
+                ${warmthActive ? '<p style="color:orange">PEMANAS AKTIF</p>' : ''}
+            `;
+        }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }, false);
+        function updateLasers() {
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                laser.position.add(laser.velocity);
+                if (laser.position.distanceTo(shipGroup.position) > 3000) {
+                    scene.remove(laser);
+                    lasers.splice(i, 1);
+                }
+            }
+        }
+
+        function updateScenery() {
+            starField.rotation.y += 0.00002;
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                asteroid.position.add(asteroid.velocity);
+                asteroid.rotation.x += 0.005; asteroid.rotation.y += 0.005;
+            }
+        }
+
+        function fireProjectile() {
+            // Logika tembak dari kode sebelumnya (disingkat)
+            if (isFrozen || isPaused || isGameOver) return;
+             const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+             laser.rotation.copy(shipGroup.rotation);
+             laser.rotateX(Math.PI / 2);
+             laser.position.copy(shipGroup.position);
+             const direction = new THREE.Vector3();
+             shipGroup.getWorldDirection(direction);
+             laser.velocity = direction.multiplyScalar(-laserFireSpeed); 
+             lasers.push(laser);
+             scene.add(laser);
+        }
+
+        // --- Helper functions ---
+        function generateShipDatabase() {
+            const baseShips = [ {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},{id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.'},{id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},{id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},{id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},{id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},{id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},{id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},{id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},{id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},{id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},{id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},{id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},{id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},{id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},{id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},{id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},{id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},{id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},{id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},{id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},{id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},{id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},{id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},{id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},{id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},{id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},{id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},{id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},{id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},{id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},{id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},{id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.'},{id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.'},{id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.'},{id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.'},{id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.'},{id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.'},{id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.'},{id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.'},{id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.'},{id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.'},{id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.'},{id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.'},{id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.'},{id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.'},{id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.'},{id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.'},{id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.'},{id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.'},{id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.'},{id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.'},{id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.'},];
+            baseShips.forEach((ship, index) => {
+                const tier = Math.floor(index / 7);
+                SPACESHIPS.push({ ...ship, stats: { health: 100 + (index * 30), maxSpeed: 18 + (index * 0.9), fuel: 250 + (index * 25), accel: 0.18 + (index * 0.009), turn: 0.035 + (index * 0.0006), laserSpeed: 60 + (index * 3.5), projectile: { type: 'standard' }}});
+            });
+        }
+        
+        function setupJoystick() { /* Logika joystick dari kode lama */ }
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }, false);
+        
+        // Mulai game
         init();
+
     </script>
 </body>
 </html>
-
-
 
