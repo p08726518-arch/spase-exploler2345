@@ -313,12 +313,12 @@
         // --- DATABASE GAME ---
         const SPACESHIPS = []; // Diisi secara dinamis
         const ACCESSORIES = {
-            shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 36, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
-            speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 39, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
-            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 69, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
-            flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 34, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
-            warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 34, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`},
-            fuelTank: { id: 'fuelTank', name: 'Tangki Bahan Bakar', baseCost: 15000, maxLevel: 39, desc: (lvl) => `Menambah kapasitas bahan bakar maksimal sebesar ${lvl * 25} unit.`}
+            shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 24, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
+            speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 24, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
+            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 32, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
+            flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 24, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
+            warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`},
+            fuelTank: { id: 'fuelTank', name: 'Tangki Bahan Bakar', baseCost: 15000, maxLevel: 34, desc: (lvl) => `Menambah kapasitas bahan bakar maksimal sebesar ${lvl * 25} unit.`}
         };
         const CRATES = [
             { id: 'starter', name: 'Starter Crate', cost: 196000, ships: [1, 2, 3, 4, 5, 6] },
@@ -613,17 +613,41 @@
         }
         function createPlayer(shipData) {
             shipGroup = new THREE.Group();
-            let bodyGeo;
-            const bodyMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()), flatShading: true });
-            const type = shipData.id % 5;
-            if (type === 0) bodyGeo = new THREE.ConeGeometry(0.5, 2, 8);
-            else if (type === 1) bodyGeo = new THREE.BoxGeometry(1, 1, 2.5);
-            else if (type === 2) bodyGeo = new THREE.DodecahedronGeometry(0.8);
-            else if (type === 3) bodyGeo = new THREE.CylinderGeometry(0.4, 0.6, 2.2, 6);
-            else bodyGeo = new THREE.OctahedronGeometry(0.9);
-            const shipBody = new THREE.Mesh(bodyGeo, bodyMat);
-            shipBody.rotation.x = Math.PI / 2;
+
+            // Membuat model pesawat yang lebih detail dari beberapa bagian
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc, flatShading: true });
+            const wingMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, flatShading: true });
+            const cockpitMaterial = new THREE.MeshPhongMaterial({ color: 0x00aaff, transparent: true, opacity: 0.7 });
+            const engineMaterial = new THREE.MeshPhongMaterial({ color: 0xff5500, flatShading: true });
+
+            // Badan utama
+            const bodyGeo = new THREE.BoxGeometry(1.5, 0.8, 4);
+            const shipBody = new THREE.Mesh(bodyGeo, bodyMaterial);
             shipGroup.add(shipBody);
+
+            // Sayap
+            const wingGeo = new THREE.BoxGeometry(5, 0.3, 1.5);
+            const leftWing = new THREE.Mesh(wingGeo, wingMaterial);
+            leftWing.position.set(-3, 0, -0.5);
+            shipGroup.add(leftWing);
+
+            const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
+            rightWing.position.set(3, 0, -0.5);
+            shipGroup.add(rightWing);
+
+            // Kokpit
+            const cockpitGeo = new THREE.SphereGeometry(0.7, 16, 16);
+            const cockpit = new THREE.Mesh(cockpitGeo, cockpitMaterial);
+            cockpit.position.set(0, 0.5, 1.5);
+            shipGroup.add(cockpit);
+
+            // Mesin
+            const engineGeo = new THREE.CylinderGeometry(0.5, 0.3, 1, 8);
+            const engine = new THREE.Mesh(engineGeo, engineMaterial);
+            engine.position.set(0, 0, -2.5);
+            engine.rotation.x = Math.PI / 2; // Arahkan ke belakang
+            shipGroup.add(engine);
+
             scene.add(shipGroup);
             const flashlightLevel = playerData.accessories.flashlight.level;
             if (flashlightLevel > 0) {
@@ -991,8 +1015,8 @@
         function checkCollisions() {
              for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
-                 if (shipGroup.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30) + 1) { // use default size for fragments
-                    takeDamage(20);
+                 if (shipGroup.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30) + 4) { // Radius tabrakan pesawat disesuaikan
+                    takeDamage(20); // Kerusakan akibat tabrakan
                     damageAsteroid(asteroid, 1000); // collision instantly destroys it
                     if (isGameOver) return;
                 }
@@ -1022,8 +1046,8 @@
             }
             for(let i = alienLasers.length - 1; i >= 0; i--) {
                 const laser = alienLasers[i];
-                if (shipGroup && laser.position.distanceTo(shipGroup.position) < 5) {
-                    takeDamage(10);
+                if (shipGroup && laser.position.distanceTo(shipGroup.position) < 4) { // Radius tabrakan pesawat disesuaikan
+                    takeDamage(10); // Kerusakan dari laser alien
                     scene.remove(laser);
                     alienLasers.splice(i, 1);
                 }
@@ -1111,12 +1135,18 @@
         function fireProjectile() {
             if (isFrozen || isPaused || isGameOver || !shipGroup) return;
              const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-             laser.rotation.copy(shipGroup.rotation);
-             laser.rotateX(Math.PI / 2);
-             laser.position.copy(shipGroup.position);
+
+             // Atur posisi dan rotasi laser agar keluar dari depan pesawat
              const direction = new THREE.Vector3();
-             shipGroup.getWorldDirection(direction);
-             laser.velocity = direction.multiplyScalar(-laserFireSpeed); 
+             shipGroup.getWorldDirection(direction); // Dapatkan arah hadap pesawat
+
+             const spawnPoint = new THREE.Vector3(0, 0, 2.5); // Posisi lokal di depan pusat pesawat
+             spawnPoint.applyMatrix4(shipGroup.matrixWorld); // Ubah ke koordinat global
+
+             laser.position.copy(spawnPoint);
+             laser.quaternion.copy(shipGroup.quaternion); // Salin rotasi pesawat
+             laser.rotateX(Math.PI / 2);
+             laser.velocity = direction.multiplyScalar(-laserFireSpeed);
              lasers.push(laser);
              scene.add(laser);
         }
@@ -1133,4 +1163,3 @@
     </script>
 </body>
 </html>
-
