@@ -188,20 +188,6 @@
         #joystick-area { width: 150px; height: 150px; position: relative; }
         #joystick-thumb { width: 60px; height: 60px; background-color: #eee; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         #fire-button { width: 100px; height: 100px; background-color: rgba(255, 0, 0, 0.7); border: 2px solid #ff0000; display: flex; justify-content: center; align-items: center; font-size: 1.5em; }
-        
-        #planet-detector {
-            position: absolute;
-            z-index: 110;
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-bottom: 25px solid var(--secondary-color);
-            filter: drop-shadow(0 0 5px #000);
-            transform-origin: 50% 50%;
-            display: none;
-        }
-
         @media (max-width: 768px) { #mobile-controls { display: flex; } }
     </style>
 </head>
@@ -211,6 +197,7 @@
         <p>Tugas: Capai target, hancurkan asteroid!</p>
         <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Gerak), Spasi (Tembak)</p>
         <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>
+        <p><b>Klik Kiri:</b> Fokus Target Sword Sensor</p>
         <p id="distance-info">Jarak ke Target: ...</p>
     </div>
     <div id="stats">
@@ -279,20 +266,23 @@
     </div>
     <div id="dim-overlay" class="overlay" style="display:none;"></div>
     <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div><div id="fire-button">TEMBAK</div></div>
-    <div id="planet-detector"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // Inisialisasi Three.js
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x000000, 0.00005);
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 80000000); // FOV diperkecil dari 75, far plane diperbesar
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50000000); // FOV diperkecil dari 75
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
         // State Game
         let isGameStarted = false, isPaused = false, isGameOver = false, score = 0, currentLevel = 'easy';
-        let shipGroup, starField, denseStarField, shipSpotlight, target, planetDetector; // Target object & detector
-        const asteroids = [], lasers = [], boosters = [], meteors = [], shipWrecks = [], detectionLines = [];
+        let shipGroup, starField, denseStarField, shipSpotlight, target; // Target object
+        const asteroids = [], lasers = [], aliens = [], alienLasers = [], shipWrecks = [], detectionLines = [];
+        let focusedTarget = null;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
         // Sistem Health, Bahan Bakar, dll
         let maxHealth = 100, currentHealth = maxHealth;
         let maxFuel = 100, currentFuel = maxFuel;
@@ -315,6 +305,7 @@
                 sword: { level: 0 },
                 flashlight: { level: 0 },
                 warmth: { level: 0 },
+                fuelTank: { level: 0 },
             }
         };
         // UI Elements
@@ -324,9 +315,10 @@
         const ACCESSORIES = {
             shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 24, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
             speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 24, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
-            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 24, desc: (lvl) => `Mendeteksi objek berbahaya dalam radius ${200 + lvl * 20} unit.`},
+            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 24, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
             flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 24, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
-            warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`}
+            warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`},
+            fuelTank: { id: 'fuelTank', name: 'Tangki Bahan Bakar', baseCost: 15000, maxLevel: 34, desc: (lvl) => `Menambah kapasitas bahan bakar maksimal sebesar ${lvl * 25} unit.`}
         };
         const CRATES = [
             { id: 'starter', name: 'Starter Crate', cost: 196000, ships: [1, 2, 3, 4, 5, 6] },
@@ -337,17 +329,17 @@
         const DUPLICATE_POINTS = 298;
         // --- PENGATURAN KESULITAN ---
         const DIFFICULTY_SETTINGS = {
-            easy:       { asteroidCount: 1000, baseDistance: 60000, pointMultiplier: 1.0, meteorInterval: 15000, freezeResist: 1.2, largeMeteorChance: 0.1 },
-            medium:     { asteroidCount: 2000, baseDistance: 80000, pointMultiplier: 1.5, meteorInterval: 12000, freezeResist: 1.0, largeMeteorChance: 0.2 },
-            hard:       { asteroidCount: 4000, baseDistance: 100000, pointMultiplier: 2.0, meteorInterval: 10000, freezeResist: 0.9, largeMeteorChance: 0.3 },
-            hardcore:   { asteroidCount: 6000, baseDistance: 120000, pointMultiplier: 2.5, meteorInterval: 8000, freezeResist: 0.8, largeMeteorChance: 0.4 },
-            impossible: { asteroidCount: 8000, baseDistance: 180000, pointMultiplier: 200, meteorInterval: 7000, freezeResist: 0.7, largeMeteorChance: 0.5 },
-            'legends-senior': { asteroidCount: 10000, baseDistance: 220000, pointMultiplier: 439, meteorInterval: 6000, freezeResist: 0.6, largeMeteorChance: 0.6 },
-            'mystery-adventurer': { asteroidCount: 12000, baseDistance: 280000, pointMultiplier: 648, meteorInterval: 5000, freezeResist: 0.5, largeMeteorChance: 0.7 },
-            'so-long': { asteroidCount: 15000, baseDistance: 500000, pointMultiplier: 800, meteorInterval: 4500, freezeResist: 0.4, largeMeteorChance: 0.8 },
-            'speed-of-spase': { asteroidCount: 12000, baseDistance: 350000, pointMultiplier: 1200, meteorInterval: 4000, freezeResist: 0.3, largeMeteorChance: 0.9 },
-            'are-you-sure': { asteroidCount: 20000, baseDistance: 800000, pointMultiplier: 2500, meteorInterval: 3000, freezeResist: 0.2, largeMeteorChance: 1.0 },
-            'hero-of-spase': { asteroidCount: 25000, baseDistance: 1000000, pointMultiplier: 4000, meteorInterval: 2500, freezeResist: 0.1, largeMeteorChance: 1.0 }
+            easy:       { asteroidCount: 1000, baseDistance: 60000, pointMultiplier: 1.0, meteorInterval: 15000, freezeResist: 1.2, largeMeteorChance: 0.1, alienInvasionInterval: 90000 },
+            medium:     { asteroidCount: 2000, baseDistance: 80000, pointMultiplier: 1.5, meteorInterval: 12000, freezeResist: 1.0, largeMeteorChance: 0.2, alienInvasionInterval: 80000 },
+            hard:       { asteroidCount: 4000, baseDistance: 100000, pointMultiplier: 2.0, meteorInterval: 10000, freezeResist: 0.9, largeMeteorChance: 0.3, alienInvasionInterval: 70000 },
+            hardcore:   { asteroidCount: 6000, baseDistance: 120000, pointMultiplier: 2.5, meteorInterval: 8000, freezeResist: 0.8, largeMeteorChance: 0.4, alienInvasionInterval: 60000 },
+            impossible: { asteroidCount: 8000, baseDistance: 180000, pointMultiplier: 200, meteorInterval: 7000, freezeResist: 0.7, largeMeteorChance: 0.5, alienInvasionInterval: 55000 },
+            'legends-senior': { asteroidCount: 10000, baseDistance: 220000, pointMultiplier: 439, meteorInterval: 6000, freezeResist: 0.6, largeMeteorChance: 0.6, alienInvasionInterval: 50000 },
+            'mystery-adventurer': { asteroidCount: 12000, baseDistance: 280000, pointMultiplier: 648, meteorInterval: 5000, freezeResist: 0.5, largeMeteorChance: 0.7, alienInvasionInterval: 45000 },
+            'so-long': { asteroidCount: 15000, baseDistance: 500000, pointMultiplier: 800, meteorInterval: 4500, freezeResist: 0.4, largeMeteorChance: 0.8, alienInvasionInterval: 40000 },
+            'speed-of-spase': { asteroidCount: 12000, baseDistance: 350000, pointMultiplier: 1200, meteorInterval: 4000, freezeResist: 0.3, largeMeteorChance: 0.9, alienInvasionInterval: 35000 },
+            'are-you-sure': { asteroidCount: 20000, baseDistance: 800000, pointMultiplier: 2500, meteorInterval: 3000, freezeResist: 0.2, largeMeteorChance: 1.0, alienInvasionInterval: 30000 },
+            'hero-of-spase': { asteroidCount: 25000, baseDistance: 1000000, pointMultiplier: 4000, meteorInterval: 2500, freezeResist: 0.1, largeMeteorChance: 1.0, alienInvasionInterval: 25000 }
         };
         let currentMissionIndex = 0;
         let maxSpeed, acceleration, turnSpeed, laserFireSpeed, currentProjectileStats, refuelRate;
@@ -358,39 +350,38 @@
         let shieldActive = false, speedBoostActive = false;
         // --- DAFTAR MISI ---
         const MISSIONS = [
-            { name: 'Jupiter', distance: 80000, desc: 'Raksasa gas terbesar di tata surya.' },
-            { name: 'Saturnus', distance: 180000, desc: 'Planet dengan cincin megah.' },
-            { name: 'Uranus', distance: 350000, desc: 'Planet es yang berputar miring.' },
-            { name: 'Neptunus', distance: 600000, desc: 'Planet biru paling jauh dari matahari.' },
-            { name: 'HD 114762 b', distance: 1200000, desc: 'Planet ekstrasurya pertama yang ditemukan.' },
-            { name: 'GJ 367 b', distance: 1500000, desc: 'Planet super panas yang padat.' },
-            { name: 'WASP-107b', distance: 2000000, desc: 'Planet "kapas" dengan atmosfer tebal.' },
-            { name: 'K2-3d', distance: 2600000, desc: 'Planet seukuran Bumi di zona layak huni.' },
-            { name: 'LHS 1140 b', distance: 3300000, desc: 'Planet batuan di zona layak huni.' },
-            { name: 'Gliese 667 Cc', distance: 4100000, desc: 'Planet potensial layak huni.' },
-            { name: 'Kepler-16b', distance: 5000000, desc: 'Tatooine versi nyata, mengorbit dua bintang.' },
-            { name: 'GJ 1214 b', distance: 6000000, desc: 'Planet air dengan atmosfer tebal.' },
-            { name: 'Kepler-438b', distance: 7100000, desc: 'Planet mirip Bumi yang mungkin layak huni.' },
-            { name: 'Ross 128 b', distance: 8300000, desc: 'Planet tenang di zona layak huni.' },
-            { name: 'KELT-9b', distance: 9600000, desc: 'Planet terpanas yang pernah ditemukan.' },
-            { name: 'Galaksi Andromeda', distance: 15000000, desc: 'Galaksi spiral terdekat, akan bertabrakan dengan Bima Sakti.' },
-            { name: 'Galaksi Triangulum', distance: 22000000, desc: 'Galaksi spiral kecil, tetangga Andromeda.' },
-            { name: 'Galaksi Sombrero', distance: 30000000, desc: 'Galaksi dengan tonjolan pusat besar dan piringan debu.' },
-            { name: 'Galaksi Whirlpool', distance: 39000000, desc: 'Galaksi spiral klasik yang berinteraksi.' },
-            { name: 'Galaksi Tadpole', distance: 49000000, desc: 'Galaksi dengan ekor panjang akibat tabrakan.' },
-            { name: 'Galaksi Black Eye', distance: 60000000, desc: 'Galaksi dengan pita debu gelap yang mencolok.' },
-            { name: 'Galaksi Messier 87', distance: 72000000, desc: 'Galaksi elips raksasa dengan lubang hitam supermasif.' }
+            { name: 'Jupiter', distance: 60000, desc: 'Raksasa gas terbesar di tata surya.' },
+            { name: 'Saturnus', distance: 120000, desc: 'Planet dengan cincin megah.' },
+            { name: 'Uranus', distance: 250000, desc: 'Planet es yang berputar miring.' },
+            { name: 'Neptunus', distance: 400000, desc: 'Planet biru paling jauh dari matahari.' },
+            { name: 'HD 114762 b', distance: 800000, desc: 'Planet ekstrasurya pertama yang ditemukan.' },
+            { name: 'GJ 367 b', distance: 950000, desc: 'Planet super panas yang padat.' },
+            { name: 'WASP-107b', distance: 1100000, desc: 'Planet "kapas" dengan atmosfer tebal.' },
+            { name: 'K2-3d', distance: 1300000, desc: 'Planet seukuran Bumi di zona layak huni.' },
+            { name: 'LHS 1140 b', distance: 1500000, desc: 'Planet batuan di zona layak huni.' },
+            { name: 'Gliese 667 Cc', distance: 1700000, desc: 'Planet potensial layak huni.' },
+            { name: 'Kepler-16b', distance: 1900000, desc: 'Tatooine versi nyata, mengorbit dua bintang.' },
+            { name: 'GJ 1214 b', distance: 2100000, desc: 'Planet air dengan atmosfer tebal.' },
+            { name: 'Kepler-438b', distance: 2300000, desc: 'Planet mirip Bumi yang mungkin layak huni.' },
+            { name: 'Ross 128 b', distance: 2500000, desc: 'Planet tenang di zona layak huni.' },
+            { name: 'KELT-9b', distance: 2700000, desc: 'Planet terpanas yang pernah ditemukan.' },
+            { name: 'Galaksi Andromeda', distance: 5000000, desc: 'Galaksi spiral terdekat, akan bertabrakan dengan Bima Sakti.' },
+            { name: 'Galaksi Triangulum', distance: 7000000, desc: 'Galaksi spiral kecil, tetangga Andromeda.' },
+            { name: 'Galaksi Sombrero', distance: 9000000, desc: 'Galaksi dengan tonjolan pusat besar dan piringan debu.' },
+            { name: 'Galaksi Whirlpool', distance: 11000000, desc: 'Galaksi spiral klasik yang berinteraksi.' },
+            { name: 'Galaksi Tadpole', distance: 13000000, desc: 'Galaksi dengan ekor panjang akibat tabrakan.' },
+            { name: 'Galaksi Black Eye', distance: 15000000, desc: 'Galaksi dengan pita debu gelap yang mencolok.' },
+            { name: 'Galaksi Messier 87', distance: 17000000, desc: 'Galaksi elips raksasa dengan lubang hitam supermasif.' }
         ];
         // --- FUNGSI UTAMA ---
         function loadPlayerData() {
             const savedData = localStorage.getItem('spaceExplorerData');
             if (savedData) {
-                // Gabungkan data tersimpan dengan default untuk memastikan semua properti ada
                 const parsedData = JSON.parse(savedData);
                 playerData = { ...defaultPlayerData, ...parsedData };
                 playerData.accessories = { ...defaultPlayerData.accessories, ...parsedData.accessories };
             } else {
-                playerData = JSON.parse(JSON.stringify(defaultPlayerData)); // deep copy
+                playerData = JSON.parse(JSON.stringify(defaultPlayerData));
             }
             pointsInfo.innerText = playerData.points.toLocaleString();
         }
@@ -406,6 +397,7 @@
             createScenery();
             setupJoystick();
             populateDifficultyButtons();
+            window.addEventListener('mousedown', onMouseDown, false);
         }
         function populateDifficultyButtons() {
             const grid = document.getElementById('difficulty-grid');
@@ -425,22 +417,20 @@
         function startGame() {
             isGameStarted = true;
             document.getElementById('hangar-screen').style.display = 'none';
-            planetDetector = document.getElementById('planet-detector');
             const shipData = SPACESHIPS.find(s => s.id === playerData.selectedShipId) || SPACESHIPS[0];
             setupShipStats(shipData);
             createPlayer(shipData);
             const settings = DIFFICULTY_SETTINGS[currentLevel];
             timeUntilFreeze = freezeTimer * settings.freezeResist;
-            // Atur target misi awal
-            currentMissionIndex = 0; // Reset ke misi pertama
+            currentMissionIndex = 0;
             const firstMission = MISSIONS[currentMissionIndex];
             document.getElementById('mission-title').innerText = firstMission.name;
-
             target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), new THREE.MeshPhongMaterial({ color: 0xE8A763 })) };
             target.object.position.z = -firstMission.distance;
             scene.add(target.object);
             createAsteroids(settings.asteroidCount, 0.5, -firstMission.distance, 0);
             setInterval(() => { if(isGameStarted && !isGameOver && Math.random() < settings.largeMeteorChance) startLargeMeteorEvent(); }, settings.meteorInterval);
+            setInterval(() => { if(isGameStarted && !isGameOver) triggerAlienInvasion(); }, settings.alienInvasionInterval);
             animate();
         }
         // --- UI & NAVIGASI MENU ---
@@ -508,8 +498,15 @@
                 const acc = ACCESSORIES[key];
                 const data = playerData.accessories[key];
                 const isMaxLevel = data.level >= acc.maxLevel;
-                let cost;
-                if (key === 'flashlight') {
+                let cost = 0;
+                
+                if (key === 'fuelTank') {
+                    if (data.level < 6) {
+                        cost = 0;
+                    } else {
+                        cost = Math.floor(acc.baseCost * Math.pow(1.5, data.level - 6));
+                    }
+                } else if (key === 'flashlight') {
                     const level = data.level;
                     if (level === 0) cost = 1;
                     else if (level === 1) cost = 2;
@@ -518,6 +515,7 @@
                 } else {
                     cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
                 }
+
                 const canAfford = playerData.points >= cost;
                 const card = document.createElement('div');
                 card.className = 'card accessory-card';
@@ -525,7 +523,7 @@
                     <h3>${acc.name}</h3>
                     <p>${acc.desc(data.level)}</p>
                     <p class="level">Level: ${data.level} / ${acc.maxLevel}</p>
-                    <p class="cost">Upgrade: ${isMaxLevel ? 'MAX' : cost.toLocaleString() + ' Poin'}</p>
+                    <p class="cost">${isMaxLevel ? 'MAX' : (cost === 0 ? 'GRATIS!' : `Upgrade: ${cost.toLocaleString()} Poin`)}</p>
                     <button class="upgrade-btn" onclick="upgradeAccessory('${key}')" ${isMaxLevel || !canAfford ? 'disabled' : ''}>
                         ${isMaxLevel ? 'LEVEL MAX' : 'UPGRADE'}
                     </button>
@@ -537,12 +535,17 @@
             const acc = ACCESSORIES[key];
             const data = playerData.accessories[key];
             if (data.level >= acc.maxLevel) return;
-            let cost;
-            if (key === 'flashlight') {
+            let cost = 0;
+
+            if (key === 'fuelTank') {
+                if (data.level < 6) {
+                    cost = 0;
+                } else {
+                    cost = Math.floor(acc.baseCost * Math.pow(1.5, data.level - 6));
+                }
+            } else if (key === 'flashlight') {
                 const level = data.level;
-                if (level === 0) cost = 1;
-                else if (level === 1) cost = 2;
-                else if (level === 2) cost = 3;
+                if (level === 0) cost = 1; else if (level === 1) cost = 2; else if (level === 2) cost = 3;
                 else cost = 5000000 * Math.pow(2, level - 3);
             } else {
                 cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
@@ -573,7 +576,6 @@
             const crate = CRATES.find(c => c.id === crateId);
             if (!crate || playerData.points < crate.cost) return;
             playerData.points -= crate.cost;
-            const results = [];
             const resultsContainer = document.getElementById('crate-results');
             resultsContainer.innerHTML = '';
             for (let i = 0; i < 4; i++) {
@@ -585,20 +587,13 @@
                 } else {
                     playerData.unlockedShips.push(randomShipId);
                 }
-                results.push({ ship, isDuplicate });
+                const card = document.createElement('div');
+                card.className = `result-card ${isDuplicate ? 'duplicate' : ''}`;
+                card.innerHTML = `<p>${ship.name}</p>${isDuplicate ? `<p class="points-gain">+${DUPLICATE_POINTS} Poin (Duplikat)</p>` : '<p>BARU!</p>'}`;
+                resultsContainer.appendChild(card);
             }
             savePlayerData();
-            populateCrateGrid(); // Refresh costs
-            // Tampilkan hasil
-            results.forEach(res => {
-                const card = document.createElement('div');
-                card.className = `result-card ${res.isDuplicate ? 'duplicate' : ''}`;
-                card.innerHTML = `
-                    <p>${res.ship.name}</p>
-                    ${res.isDuplicate ? `<p class="points-gain">+${DUPLICATE_POINTS} Poin (Duplikat)</p>` : '<p>BARU!</p>'}
-                `;
-                resultsContainer.appendChild(card);
-            });
+            populateCrateGrid();
             document.getElementById('crate-result-screen').style.display = 'flex';
         }
         // --- PEMBUATAN OBJEK & STATS ---
@@ -606,7 +601,8 @@
              maxHealth = shipData.stats.health;
              currentHealth = maxHealth;
              maxSpeed = shipData.stats.maxSpeed;
-             maxFuel = shipData.stats.fuel;
+             const fuelBonus = playerData.accessories.fuelTank.level * 25;
+             maxFuel = shipData.stats.fuel + fuelBonus;
              acceleration = shipData.stats.accel;
              turnSpeed = shipData.stats.turn;
              laserFireSpeed = shipData.stats.laserSpeed;
@@ -628,7 +624,6 @@
             shipBody.rotation.x = Math.PI / 2;
             shipGroup.add(shipBody);
             scene.add(shipGroup);
-            // Senter
             const flashlightLevel = playerData.accessories.flashlight.level;
             if (flashlightLevel > 0) {
                 shipSpotlight = new THREE.SpotLight(0xffffff, 2, 1000, Math.PI / (10 - flashlightLevel * 0.2), 0.5, 2);
@@ -660,6 +655,8 @@
                 const scale = Math.random() * 40 + 15;
                 asteroid.scale.set(scale, scale, scale);
                 asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
+                asteroid.health = 15;
+                asteroid.isTargetable = true; // Flag for raycasting
                 asteroids.push(asteroid);
                 scene.add(asteroid);
             }
@@ -669,6 +666,20 @@
         window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; handleAccessoryKeyPress(e.key); });
         window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
         window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); fireProjectile(); }});
+        
+        function onMouseDown(event) {
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(asteroids);
+            if (intersects.length > 0) {
+                focusedTarget = intersects[0].object;
+            } else {
+                focusedTarget = null; // Klik di angkasa, hapus fokus
+            }
+        }
+
         function updateShipMovement(deltaTime) {
             if (isPaused || !deltaTime) return;
             if (isFrozen) {
@@ -680,13 +691,12 @@
             }
             const currentSpeedMultiplier = speedBoostActive ? 2 : 1;
             const currentMaxSpeed = maxSpeed * currentSpeedMultiplier;
-            const fuelConsumptionRate = 5; // Konsumsi 5 unit per detik saat akselerasi
+            const fuelConsumptionRate = 5;
 
             if ((keyboard['w']) && currentFuel > 0) {
                  speed = Math.min(speed + acceleration, currentMaxSpeed);
-                 currentFuel -= fuelConsumptionRate * (deltaTime / 1000); // Konsumsi bahan bakar berbasis waktu
+                 currentFuel -= fuelConsumptionRate * (deltaTime / 1000);
             } else {
-                 // Isi bahan bakar otomatis jika tidak berakselerasi
                 if (currentFuel < maxFuel) {
                     currentFuel = Math.min(currentFuel + refuelRate * (deltaTime / 1000), maxFuel);
                 }
@@ -714,7 +724,7 @@
                     isFrozen = false;
                     timeUntilFreeze = freezeTimer * DIFFICULTY_SETTINGS[currentLevel].freezeResist;
                     document.getElementById('freeze-warning').style.display = 'none';
-                }, 5000); // Beku selama 5 detik
+                }, 5000);
             }
             if (warmthActive) {
                 warmthDuration -= deltaTime;
@@ -734,32 +744,137 @@
             const dimOverlay = document.getElementById('dim-overlay');
             dimOverlay.style.opacity = finalOpacity;
             dimOverlay.style.display = 'block';
-            setTimeout(() => {
-                 dimOverlay.style.opacity = 0;
-            }, 8000); // Efek berlangsung 8 detik
-            setTimeout(() => {
-                dimOverlay.style.display = 'none';
-            }, 10000);
+            setTimeout(() => { dimOverlay.style.opacity = 0; }, 8000);
+            setTimeout(() => { dimOverlay.style.display = 'none'; }, 10000);
         }
         function updateSwordSensor() {
-            // Hapus garis lama
             detectionLines.forEach(line => scene.remove(line));
             detectionLines.length = 0;
+        
             const swordLevel = playerData.accessories.sword.level;
             if (swordLevel === 0 || !shipGroup) return;
+        
             const detectionRadius = 200 + swordLevel * 20;
+            const swordDamage = 3 + swordLevel;
+            const now = Date.now();
+            const swordCooldown = 1000;
             const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
-            asteroids.forEach(asteroid => {
-                const distance = shipGroup.position.distanceTo(asteroid.position);
-                if (distance < detectionRadius) {
-                    const points = [shipGroup.position.clone(), asteroid.position.clone()];
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    const line = new THREE.Line(geometry, material);
-                    detectionLines.push(line);
-                    scene.add(line);
+        
+            let targetToDamage = null;
+        
+            // Prioritaskan target yang difokuskan
+            if (focusedTarget && focusedTarget.health > 0 && shipGroup.position.distanceTo(focusedTarget.position) < detectionRadius) {
+                targetToDamage = focusedTarget;
+            } else {
+                focusedTarget = null; // Hapus fokus jika target hancur atau di luar jangkauan
+                // Jika tidak ada fokus, cari target terdekat
+                let closestTarget = null;
+                let minDistance = Infinity;
+                asteroids.forEach(asteroid => {
+                    const distance = shipGroup.position.distanceTo(asteroid.position);
+                    if (distance < detectionRadius && distance < minDistance) {
+                        minDistance = distance;
+                        closestTarget = asteroid;
+                    }
+                });
+                targetToDamage = closestTarget;
+            }
+        
+            if (targetToDamage) {
+                const points = [shipGroup.position.clone(), targetToDamage.position.clone()];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                detectionLines.push(line);
+                scene.add(line);
+        
+                if (!targetToDamage.lastSwordHitTime || now > targetToDamage.lastSwordHitTime + swordCooldown) {
+                    targetToDamage.lastSwordHitTime = now;
+                    targetToDamage.health -= swordDamage;
+        
+                    if (targetToDamage.health <= 0) {
+                        const index = asteroids.indexOf(targetToDamage);
+                        if (index > -1) {
+                           scene.remove(targetToDamage);
+                           asteroids.splice(index, 1);
+                           score++;
+                           document.getElementById('score').innerText = score;
+                        }
+                        if (targetToDamage === focusedTarget) {
+                            focusedTarget = null;
+                        }
+                    }
                 }
-            });
+            }
         }
+        
+        // --- FUNGSI ALIEN ---
+        function createAlienShip(position) {
+            const alienGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0x00ff00, flatShading: true });
+            const bodyGeo = new THREE.ConeGeometry(5, 10, 4);
+            const alienBody = new THREE.Mesh(bodyGeo, bodyMat);
+            alienBody.rotation.x = Math.PI / 2;
+            alienGroup.add(alienBody);
+            alienGroup.position.copy(position);
+            alienGroup.health = 20;
+            alienGroup.lastFireTime = 0;
+            aliens.push(alienGroup);
+            scene.add(alienGroup);
+        }
+
+        function triggerAlienInvasion() {
+            if (!shipGroup) return;
+            const spawnDistance = 2000;
+            const angle = Math.random() * Math.PI * 2;
+            const startX = shipGroup.position.x + Math.cos(angle) * spawnDistance;
+            const startZ = shipGroup.position.z + Math.sin(angle) * spawnDistance;
+            
+            for(let i = 0; i < 9; i++) {
+                const offsetX = (Math.random() - 0.5) * 500;
+                const offsetY = (Math.random() - 0.5) * 200;
+                const offsetZ = (Math.random() - 0.5) * 500;
+                const spawnPos = new THREE.Vector3(startX + offsetX, shipGroup.position.y + offsetY, startZ + offsetZ);
+                createAlienShip(spawnPos);
+            }
+        }
+
+        function updateAliens(deltaTime) {
+            if (!shipGroup) return;
+            const alienSpeed = 10;
+            const fireCooldown = 2000; // 2 detik
+
+            for (let i = aliens.length - 1; i >= 0; i--) {
+                const alien = aliens[i];
+                const direction = new THREE.Vector3().subVectors(shipGroup.position, alien.position).normalize();
+                alien.position.add(direction.multiplyScalar(alienSpeed * (deltaTime / 1000)));
+                alien.lookAt(shipGroup.position);
+
+                // Fire at player
+                const now = Date.now();
+                if (now > alien.lastFireTime + fireCooldown) {
+                    alien.lastFireTime = now;
+                    const laserMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                    const laserGeo = new THREE.CylinderGeometry(0.5, 0.5, 5, 8);
+                    const laser = new THREE.Mesh(laserGeo, laserMat);
+                    laser.position.copy(alien.position);
+                    laser.velocity = new THREE.Vector3().subVectors(shipGroup.position, alien.position).normalize().multiplyScalar(50);
+                    alienLasers.push(laser);
+                    scene.add(laser);
+                }
+            }
+        }
+
+        function updateAlienLasers() {
+             for (let i = alienLasers.length - 1; i >= 0; i--) {
+                const laser = alienLasers[i];
+                laser.position.add(laser.velocity);
+                if (laser.position.distanceTo(shipGroup.position) > 4000) {
+                    scene.remove(laser);
+                    alienLasers.splice(i, 1);
+                }
+            }
+        }
+
         // --- AKSI & KOLISI ---
         function handleAccessoryKeyPress(key) {
             if (isGameOver || isPaused) return;
@@ -777,7 +892,7 @@
             } else if (key === '3' && playerData.accessories.warmth.level > 0 && now > accessoryCooldowns.warmth) {
                  const level = playerData.accessories.warmth.level;
                 warmthActive = true;
-                isFrozen = false; // Langsung menghilangkan beku
+                isFrozen = false;
                 document.getElementById('freeze-warning').style.display = 'none';
                 document.getElementById('warmth-container').style.display = 'block';
                 maxWarmth = (60 + level * 5) * 1000;
@@ -797,6 +912,7 @@
             }
         }
         function checkCollisions() {
+             // Tabrakan pemain dengan asteroid
              for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
                  if (shipGroup.position.distanceTo(asteroid.position) < asteroid.scale.x + 1) {
@@ -806,103 +922,72 @@
                     if (isGameOver) return;
                 }
             }
+            // Laser pemain mengenai asteroid dan alien
             for (let i = lasers.length - 1; i >= 0; i--) {
                 const laser = lasers[i];
                 if (!laser) continue;
+                let laserRemoved = false;
+                // Cek asteroid
                 for (let j = asteroids.length - 1; j >= 0; j--) {
                     const asteroid = asteroids[j];
                     if (laser.position.distanceTo(asteroid.position) < asteroid.scale.x) {
-                        scene.remove(asteroid); 
-                        asteroids.splice(j, 1);
-                        score++; 
-                        document.getElementById('score').innerText = score;
-                        if (!laser.isPiercing) {
-                           scene.remove(laser); 
-                           lasers.splice(i, 1);
-                           break;
+                        asteroid.health -= 5;
+                        if (asteroid.health <= 0) {
+                            scene.remove(asteroid); asteroids.splice(j, 1); score++; document.getElementById('score').innerText = score;
                         }
+                        if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); laserRemoved = true; break; }
+                    }
+                }
+                if (laserRemoved) continue;
+                // Cek alien
+                 for (let k = aliens.length - 1; k >= 0; k--) {
+                    const alien = aliens[k];
+                    if (laser.position.distanceTo(alien.position) < 10) {
+                        alien.health -= 5;
+                         if (alien.health <= 0) {
+                            scene.remove(alien); aliens.splice(k, 1); playerData.points += 50; savePlayerData();
+                        }
+                        if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); break; }
                     }
                 }
             }
-        }
-        
-        function updatePlanetDetector() {
-            if (!isGameStarted || isGameOver || !shipGroup || !target || !planetDetector) {
-                if (planetDetector) planetDetector.style.display = 'none';
-                return;
+            // Laser alien mengenai pemain
+            for(let i = alienLasers.length - 1; i >= 0; i--) {
+                const laser = alienLasers[i];
+                if (shipGroup && laser.position.distanceTo(shipGroup.position) < 5) {
+                    takeDamage(10);
+                    scene.remove(laser);
+                    alienLasers.splice(i, 1);
+                }
             }
-
-            const targetPos = new THREE.Vector3();
-            target.object.getWorldPosition(targetPos);
-
-            const cameraToTarget = new THREE.Vector3().subVectors(targetPos, camera.position);
-            const cameraForward = new THREE.Vector3();
-            camera.getWorldDirection(cameraForward);
-            
-            const screenPos = targetPos.clone().project(camera);
-
-            if (cameraToTarget.dot(cameraForward) > 0 && Math.abs(screenPos.x) < 1 && Math.abs(screenPos.y) < 1) {
-                planetDetector.style.display = 'none';
-                return;
-            }
-            
-            planetDetector.style.display = 'block';
-
-            const halfW = window.innerWidth / 2;
-            const halfH = window.innerHeight / 2;
-            
-            const angle = Math.atan2(
-                screenPos.z > 1 ? screenPos.y * halfH : -screenPos.y * halfH,
-                screenPos.z > 1 ? -screenPos.x * halfW : screenPos.x * halfW
-            );
-
-            const margin = 50;
-            const radiusX = halfW - margin;
-            const radiusY = halfH - margin;
-            
-            const edgeX = halfW + radiusX * Math.cos(angle);
-            const edgeY = halfH + radiusY * Math.sin(angle);
-            
-            planetDetector.style.left = `${edgeX}px`;
-            planetDetector.style.top = `${edgeY}px`;
-            planetDetector.style.transform = `translate(-50%, -50%) rotate(${angle + Math.PI / 2}rad)`;
         }
-
         function updateDistanceInfo() {
             if (!shipGroup || !target || isGameOver) return;
-
             const distance = shipGroup.position.distanceTo(target.object.position);
             document.getElementById('distance-info').innerText = `Jarak ke Target: ${Math.round(distance).toLocaleString()} m`;
 
-            if (distance < 450) { 
+            if (distance < 450) {
                 const pointsWon = Math.round(MISSIONS[currentMissionIndex].distance * DIFFICULTY_SETTINGS[currentLevel].pointMultiplier);
                 playerData.points += pointsWon;
                 savePlayerData();
 
                 if (currentMissionIndex >= MISSIONS.length - 1) {
-                    isGameOver = true;
-                    isPaused = true;
+                    isGameOver = true; isPaused = true;
                     document.getElementById('win-screen').style.display = 'flex';
                     document.getElementById('win-message').innerText = `SELAMAT! Anda telah menjelajahi seluruh alam semesta! Bonus Akhir: ${pointsWon.toLocaleString()} poin.`;
                 } else {
-                    currentMissionIndex++; 
-
+                    currentMissionIndex++;
                     scene.remove(target.object);
-
                     const nextMission = MISSIONS[currentMissionIndex];
                     document.getElementById('mission-title').innerText = nextMission.name;
-
                     target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), new THREE.MeshPhongMaterial({ color: 0xE8A763 })) };
-                    target.object.position.z = -nextMission.distance; 
+                    target.object.position.z = -nextMission.distance;
                     scene.add(target.object);
-
                     const settings = DIFFICULTY_SETTINGS[currentLevel];
                     const currentZ = shipGroup.position.z;
                     createAsteroids(settings.asteroidCount, 0.5, -nextMission.distance, currentZ);
-
                     alert(`Misi Baru: ${nextMission.name}\n${nextMission.desc}\nPoin Bonus: ${pointsWon.toLocaleString()}`);
-
-                    timeUntilFreeze = freezeTimer * DIFFICULTY_SETTINGS[currentLevel].freezeResist;
+                    timeUntilFreeze = freezeTimer * settings.freezeResist;
                 }
             }
         }
@@ -916,13 +1001,14 @@
             if (isGameStarted && !isPaused) {
                 updateShipMovement(deltaTime);
                 updateLasers();
+                updateAlienLasers();
+                updateAliens(deltaTime);
                 updateUIBars();
                 checkCollisions();
                 updateScenery();
                 updateFreezeStatus(deltaTime);
                 updateSwordSensor();
                 updateDistanceInfo();
-                updatePlanetDetector();
                 const relativeCameraOffset = new THREE.Vector3(0, 5 + speed, 20 + speed);
                 const cameraOffset = relativeCameraOffset.applyMatrix4(shipGroup.matrixWorld);
                 camera.position.lerp(cameraOffset, 0.1);
@@ -933,7 +1019,6 @@
         function updateUIBars() {
             document.getElementById('fuel-bar').style.width = `${(currentFuel / maxFuel) * 100}%`;
             document.getElementById('health-bar').style.width = `${(currentHealth / maxHealth) * 100}%`;
-            // Tampilkan status aksesoris
             const statusDiv = document.getElementById('accessory-status');
             statusDiv.innerHTML = `
                 ${shieldActive ? '<p style="color:var(--primary-color)">SHIELD AKTIF</p>' : ''}
@@ -953,15 +1038,10 @@
         }
         function updateScenery() {
             starField.rotation.y += 0.00002;
-            for (let i = asteroids.length - 1; i >= 0; i--) {
-                const asteroid = asteroids[i];
-                asteroid.position.add(asteroid.velocity);
-                asteroid.rotation.x += 0.005; asteroid.rotation.y += 0.005;
-            }
+            asteroids.forEach(a => { a.position.add(a.velocity); a.rotation.x += 0.005; a.rotation.y += 0.005; });
         }
         function fireProjectile() {
-            // Logika tembak dari kode sebelumnya (disingkat)
-            if (isFrozen || isPaused || isGameOver) return;
+            if (isFrozen || isPaused || isGameOver || !shipGroup) return;
              const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
              laser.rotation.copy(shipGroup.rotation);
              laser.rotateX(Math.PI / 2);
@@ -974,15 +1054,13 @@
         }
         // --- Helper functions ---
         function generateShipDatabase() {
-            const baseShips = [ {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},{id: 1, name: 'Dart', cost: 0, desc: 'Tembakan standar. Lebih cepat dan lincah.'},{id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},{id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},{id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},{id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},{id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},{id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},{id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},{id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},{id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},{id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},{id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},{id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},{id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},{id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},{id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},{id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},{id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},{id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},{id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},{id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},{id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},{id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},{id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},{id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},{id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},{id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},{id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},{id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},{id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},{id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},{id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.'},{id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.'},{id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.'},{id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.'},{id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.'},{id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.'},{id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.'},{id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.'},{id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.'},{id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.'},{id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.'},{id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.'},{id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.'},{id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.'},{id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.'},{id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.'},{id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.'},{id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.'},{id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.'},{id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.'},{id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.'},];
+            const baseShips = [ {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},{id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.'},{id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},{id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},{id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},{id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},{id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},{id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},{id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},{id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},{id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},{id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},{id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},{id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},{id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},{id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},{id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},{id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},{id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},{id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},{id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},{id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},{id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},{id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},{id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},{id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},{id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},{id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},{id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},{id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},{id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},{id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},{id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.'},{id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.'},{id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.'},{id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.'},{id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.'},{id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.'},{id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.'},{id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.'},{id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.'},{id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.'},{id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.'},{id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.'},{id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.'},{id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.'},{id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.'},{id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.'},{id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.'},{id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.'},{id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.'},{id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.'},{id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.'},];
             baseShips.forEach((ship, index) => {
-                const tier = Math.floor(index / 7);
                 SPACESHIPS.push({ ...ship, stats: { health: 100 + (index * 30), maxSpeed: 18 + (index * 0.9), fuel: 250 + (index * 25), accel: 0.18 + (index * 0.009), turn: 0.035 + (index * 0.0006), laserSpeed: 60 + (index * 3.5), refuelRate: 2 + (index * 0.1), projectile: { type: 'standard' }}});
             });
         }
         function setupJoystick() { /* Logika joystick dari kode lama */ }
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }, false);
-        // Mulai game
         init();
     </script>
 </body>
