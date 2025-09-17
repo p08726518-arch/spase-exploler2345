@@ -315,7 +315,7 @@
         const ACCESSORIES = {
             shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 24, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
             speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 24, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
-            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 24, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
+            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 32, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
             flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 24, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
             warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`},
             fuelTank: { id: 'fuelTank', name: 'Tangki Bahan Bakar', baseCost: 15000, maxLevel: 34, desc: (lvl) => `Menambah kapasitas bahan bakar maksimal sebesar ${lvl * 25} unit.`}
@@ -329,17 +329,17 @@
         const DUPLICATE_POINTS = 298;
         // --- PENGATURAN KESULITAN ---
         const DIFFICULTY_SETTINGS = {
-            easy:       { asteroidCount: 1000, baseDistance: 60000, pointMultiplier: 1.0, meteorInterval: 15000, freezeResist: 1.2, largeMeteorChance: 0.1, alienInvasionInterval: 90000 },
-            medium:     { asteroidCount: 2000, baseDistance: 80000, pointMultiplier: 1.5, meteorInterval: 12000, freezeResist: 1.0, largeMeteorChance: 0.2, alienInvasionInterval: 80000 },
-            hard:       { asteroidCount: 4000, baseDistance: 100000, pointMultiplier: 2.0, meteorInterval: 10000, freezeResist: 0.9, largeMeteorChance: 0.3, alienInvasionInterval: 70000 },
-            hardcore:   { asteroidCount: 6000, baseDistance: 120000, pointMultiplier: 2.5, meteorInterval: 8000, freezeResist: 0.8, largeMeteorChance: 0.4, alienInvasionInterval: 60000 },
-            impossible: { asteroidCount: 8000, baseDistance: 180000, pointMultiplier: 200, meteorInterval: 7000, freezeResist: 0.7, largeMeteorChance: 0.5, alienInvasionInterval: 55000 },
-            'legends-senior': { asteroidCount: 10000, baseDistance: 220000, pointMultiplier: 439, meteorInterval: 6000, freezeResist: 0.6, largeMeteorChance: 0.6, alienInvasionInterval: 50000 },
-            'mystery-adventurer': { asteroidCount: 12000, baseDistance: 280000, pointMultiplier: 648, meteorInterval: 5000, freezeResist: 0.5, largeMeteorChance: 0.7, alienInvasionInterval: 45000 },
-            'so-long': { asteroidCount: 15000, baseDistance: 500000, pointMultiplier: 800, meteorInterval: 4500, freezeResist: 0.4, largeMeteorChance: 0.8, alienInvasionInterval: 40000 },
-            'speed-of-spase': { asteroidCount: 12000, baseDistance: 350000, pointMultiplier: 1200, meteorInterval: 4000, freezeResist: 0.3, largeMeteorChance: 0.9, alienInvasionInterval: 35000 },
-            'are-you-sure': { asteroidCount: 20000, baseDistance: 800000, pointMultiplier: 2500, meteorInterval: 3000, freezeResist: 0.2, largeMeteorChance: 1.0, alienInvasionInterval: 30000 },
-            'hero-of-spase': { asteroidCount: 25000, baseDistance: 1000000, pointMultiplier: 4000, meteorInterval: 2500, freezeResist: 0.1, largeMeteorChance: 1.0, alienInvasionInterval: 25000 }
+            easy:       { asteroidCount: 1000, baseDistance: 60000, pointMultiplier: 1.0, meteorInterval: 15000, freezeResist: 1.2, largeMeteorChance: 0.1, alienInvasionInterval: 90000, frozenMeteorInterval: 120000 },
+            medium:     { asteroidCount: 2000, baseDistance: 80000, pointMultiplier: 1.5, meteorInterval: 12000, freezeResist: 1.0, largeMeteorChance: 0.2, alienInvasionInterval: 80000, frozenMeteorInterval: 110000 },
+            hard:       { asteroidCount: 4000, baseDistance: 100000, pointMultiplier: 2.0, meteorInterval: 10000, freezeResist: 0.9, largeMeteorChance: 0.3, alienInvasionInterval: 70000, frozenMeteorInterval: 100000 },
+            hardcore:   { asteroidCount: 6000, baseDistance: 120000, pointMultiplier: 2.5, meteorInterval: 8000, freezeResist: 0.8, largeMeteorChance: 0.4, alienInvasionInterval: 60000, frozenMeteorInterval: 90000 },
+            impossible: { asteroidCount: 8000, baseDistance: 180000, pointMultiplier: 200, meteorInterval: 7000, freezeResist: 0.7, largeMeteorChance: 0.5, alienInvasionInterval: 55000, frozenMeteorInterval: 85000 },
+            'legends-senior': { asteroidCount: 10000, baseDistance: 220000, pointMultiplier: 439, meteorInterval: 6000, freezeResist: 0.6, largeMeteorChance: 0.6, alienInvasionInterval: 50000, frozenMeteorInterval: 80000 },
+            'mystery-adventurer': { asteroidCount: 12000, baseDistance: 280000, pointMultiplier: 648, meteorInterval: 5000, freezeResist: 0.5, largeMeteorChance: 0.7, alienInvasionInterval: 45000, frozenMeteorInterval: 75000 },
+            'so-long': { asteroidCount: 15000, baseDistance: 500000, pointMultiplier: 800, meteorInterval: 4500, freezeResist: 0.4, largeMeteorChance: 0.8, alienInvasionInterval: 40000, frozenMeteorInterval: 70000 },
+            'speed-of-spase': { asteroidCount: 12000, baseDistance: 350000, pointMultiplier: 1200, meteorInterval: 4000, freezeResist: 0.3, largeMeteorChance: 0.9, alienInvasionInterval: 35000, frozenMeteorInterval: 65000 },
+            'are-you-sure': { asteroidCount: 20000, baseDistance: 800000, pointMultiplier: 2500, meteorInterval: 3000, freezeResist: 0.2, largeMeteorChance: 1.0, alienInvasionInterval: 30000, frozenMeteorInterval: 60000 },
+            'hero-of-spase': { asteroidCount: 25000, baseDistance: 1000000, pointMultiplier: 4000, meteorInterval: 2500, freezeResist: 0.1, largeMeteorChance: 1.0, alienInvasionInterval: 25000, frozenMeteorInterval: 55000 }
         };
         let currentMissionIndex = 0;
         let maxSpeed, acceleration, turnSpeed, laserFireSpeed, currentProjectileStats, refuelRate;
@@ -431,6 +431,7 @@
             createAsteroids(settings.asteroidCount, 0.5, -firstMission.distance, 0);
             setInterval(() => { if(isGameStarted && !isGameOver && Math.random() < settings.largeMeteorChance) startLargeMeteorEvent(); }, settings.meteorInterval);
             setInterval(() => { if(isGameStarted && !isGameOver) triggerAlienInvasion(); }, settings.alienInvasionInterval);
+            setInterval(() => { if(isGameStarted && !isGameOver) triggerFrozenMeteorEvent(); }, settings.frozenMeteorInterval);
             animate();
         }
         // --- UI & NAVIGASI MENU ---
@@ -648,6 +649,11 @@
             const asteroidMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513, flatShading: true });
             const distance = Math.abs(maxZ - minZ);
             const rangeX = distance * 0.05, rangeY = distance * 0.05;
+
+            const difficultyLevels = Object.keys(DIFFICULTY_SETTINGS);
+            const difficultyIndex = difficultyLevels.indexOf(currentLevel);
+            const healthMultiplier = Math.pow(3, difficultyIndex);
+
             for (let i = 0; i < count; i++) {
                 const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
                 const zPos = minZ + (Math.random() * distance);
@@ -655,8 +661,8 @@
                 const scale = Math.random() * 40 + 15;
                 asteroid.scale.set(scale, scale, scale);
                 asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
-                asteroid.health = 15;
-                asteroid.isTargetable = true; // Flag for raycasting
+                asteroid.health = 15 * healthMultiplier;
+                asteroid.isTargetable = true;
                 asteroids.push(asteroid);
                 scene.add(asteroid);
             }
@@ -672,11 +678,12 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(asteroids);
+            const objectsToIntersect = asteroids.filter(a => a.isTargetable);
+            const intersects = raycaster.intersectObjects(objectsToIntersect);
             if (intersects.length > 0) {
                 focusedTarget = intersects[0].object;
             } else {
-                focusedTarget = null; // Klik di angkasa, hapus fokus
+                focusedTarget = null;
             }
         }
 
@@ -747,6 +754,33 @@
             setTimeout(() => { dimOverlay.style.opacity = 0; }, 8000);
             setTimeout(() => { dimOverlay.style.display = 'none'; }, 10000);
         }
+
+        function damageAsteroid(asteroid, damage) {
+            if (!asteroid || asteroid.health === undefined) return;
+            asteroid.health -= damage;
+
+            if (asteroid.health <= 0) {
+                const index = asteroids.indexOf(asteroid);
+                if (index === -1) return; 
+
+                if (asteroid.isFrozenMeteor && !asteroid.isFragment) { 
+                    createFrozenFragments(asteroid.position, asteroid.velocity);
+                    playerData.points += Math.round(100 * DIFFICULTY_SETTINGS[currentLevel].pointMultiplier);
+                    savePlayerData();
+                } else { 
+                    score++;
+                    document.getElementById('score').innerText = score;
+                }
+
+                if (asteroid === focusedTarget) {
+                    focusedTarget = null;
+                }
+
+                scene.remove(asteroid);
+                asteroids.splice(index, 1);
+            }
+        }
+
         function updateSwordSensor() {
             detectionLines.forEach(line => scene.remove(line));
             detectionLines.length = 0;
@@ -759,55 +793,35 @@
             const now = Date.now();
             const swordCooldown = 1000;
             const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
-        
-            let targetToDamage = null;
-        
-            // Prioritaskan target yang difokuskan
+            
+            let targetsToDamage = [];
+            
             if (focusedTarget && focusedTarget.health > 0 && shipGroup.position.distanceTo(focusedTarget.position) < detectionRadius) {
-                targetToDamage = focusedTarget;
+                 targetsToDamage.push(focusedTarget);
             } else {
-                focusedTarget = null; // Hapus fokus jika target hancur atau di luar jangkauan
-                // Jika tidak ada fokus, cari target terdekat
-                let closestTarget = null;
-                let minDistance = Infinity;
+                if(focusedTarget) focusedTarget = null; 
                 asteroids.forEach(asteroid => {
-                    const distance = shipGroup.position.distanceTo(asteroid.position);
-                    if (distance < detectionRadius && distance < minDistance) {
-                        minDistance = distance;
-                        closestTarget = asteroid;
+                    if (shipGroup.position.distanceTo(asteroid.position) < detectionRadius) {
+                        targetsToDamage.push(asteroid);
                     }
                 });
-                targetToDamage = closestTarget;
             }
         
-            if (targetToDamage) {
-                const points = [shipGroup.position.clone(), targetToDamage.position.clone()];
+            targetsToDamage.forEach(target => {
+                const points = [shipGroup.position.clone(), target.position.clone()];
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
                 const line = new THREE.Line(geometry, material);
                 detectionLines.push(line);
                 scene.add(line);
         
-                if (!targetToDamage.lastSwordHitTime || now > targetToDamage.lastSwordHitTime + swordCooldown) {
-                    targetToDamage.lastSwordHitTime = now;
-                    targetToDamage.health -= swordDamage;
-        
-                    if (targetToDamage.health <= 0) {
-                        const index = asteroids.indexOf(targetToDamage);
-                        if (index > -1) {
-                           scene.remove(targetToDamage);
-                           asteroids.splice(index, 1);
-                           score++;
-                           document.getElementById('score').innerText = score;
-                        }
-                        if (targetToDamage === focusedTarget) {
-                            focusedTarget = null;
-                        }
-                    }
+                if (!target.lastSwordHitTime || now > target.lastSwordHitTime + swordCooldown) {
+                    target.lastSwordHitTime = now;
+                    damageAsteroid(target, swordDamage);
                 }
-            }
+            });
         }
         
-        // --- FUNGSI ALIEN ---
+        // --- FUNGSI ALIEN & METEOR BEKU ---
         function createAlienShip(position) {
             const alienGroup = new THREE.Group();
             const bodyMat = new THREE.MeshPhongMaterial({ color: 0x00ff00, flatShading: true });
@@ -838,10 +852,74 @@
             }
         }
 
+        function triggerFrozenMeteorEvent() {
+            if (!shipGroup) return;
+            const spawnDistance = 2500;
+            const angle = Math.random() * Math.PI * 2;
+            const spawnPos = new THREE.Vector3(
+                shipGroup.position.x + Math.cos(angle) * spawnDistance,
+                shipGroup.position.y + (Math.random() - 0.5) * 500,
+                shipGroup.position.z + Math.sin(angle) * spawnDistance
+            );
+            createFrozenMeteor(spawnPos);
+        }
+
+        function createFrozenMeteor(position) {
+            const difficultyLevels = Object.keys(DIFFICULTY_SETTINGS);
+            const difficultyIndex = difficultyLevels.indexOf(currentLevel);
+            const healthMultiplier = Math.pow(3, difficultyIndex);
+
+            const meteorMaterial = new THREE.MeshPhongMaterial({ color: 0xADD8E6, transparent: true, opacity: 0.9, flatShading: true });
+            const meteorGeometry = new THREE.OctahedronGeometry(60, 1);
+            const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
+            meteor.position.copy(position);
+            
+            meteor.health = 49 * healthMultiplier;
+            meteor.isTargetable = true;
+            meteor.isFrozenMeteor = true;
+            meteor.isFragment = false;
+            
+            const directionToPlayer = new THREE.Vector3().subVectors(shipGroup.position, meteor.position).normalize();
+            meteor.velocity = directionToPlayer.multiplyScalar(Math.random() * 2 + 1);
+
+            asteroids.push(meteor);
+            scene.add(meteor);
+        }
+
+        function createFrozenFragments(position, initialVelocity) {
+            const difficultyLevels = Object.keys(DIFFICULTY_SETTINGS);
+            const difficultyIndex = difficultyLevels.indexOf(currentLevel);
+            const healthMultiplier = Math.pow(3, difficultyIndex);
+
+            const fragmentMaterial = new THREE.MeshPhongMaterial({ color: 0xADD8E6, transparent: true, opacity: 0.8, flatShading: true });
+            const fragmentGeometry = new THREE.TetrahedronGeometry(25, 0);
+
+            for (let i = 0; i < 5; i++) {
+                const fragment = new THREE.Mesh(fragmentGeometry, fragmentMaterial);
+                fragment.position.copy(position);
+
+                const spread = new THREE.Vector3(
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3
+                );
+                fragment.velocity = initialVelocity.clone().add(spread);
+
+                fragment.health = 30 * healthMultiplier;
+                fragment.isTargetable = true;
+                fragment.isFrozenMeteor = true; 
+                fragment.isFragment = true;
+
+                asteroids.push(fragment);
+                scene.add(fragment);
+            }
+        }
+
+
         function updateAliens(deltaTime) {
             if (!shipGroup) return;
             const alienSpeed = 10;
-            const fireCooldown = 2000; // 2 detik
+            const fireCooldown = 2000;
 
             for (let i = aliens.length - 1; i >= 0; i--) {
                 const alien = aliens[i];
@@ -849,7 +927,6 @@
                 alien.position.add(direction.multiplyScalar(alienSpeed * (deltaTime / 1000)));
                 alien.lookAt(shipGroup.position);
 
-                // Fire at player
                 const now = Date.now();
                 if (now > alien.lastFireTime + fireCooldown) {
                     alien.lastFireTime = now;
@@ -912,34 +989,26 @@
             }
         }
         function checkCollisions() {
-             // Tabrakan pemain dengan asteroid
              for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
-                 if (shipGroup.position.distanceTo(asteroid.position) < asteroid.scale.x + 1) {
+                 if (shipGroup.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30) + 1) { // use default size for fragments
                     takeDamage(20);
-                    scene.remove(asteroid);
-                    asteroids.splice(i, 1);
+                    damageAsteroid(asteroid, 1000); // collision instantly destroys it
                     if (isGameOver) return;
                 }
             }
-            // Laser pemain mengenai asteroid dan alien
             for (let i = lasers.length - 1; i >= 0; i--) {
                 const laser = lasers[i];
                 if (!laser) continue;
                 let laserRemoved = false;
-                // Cek asteroid
                 for (let j = asteroids.length - 1; j >= 0; j--) {
                     const asteroid = asteroids[j];
-                    if (laser.position.distanceTo(asteroid.position) < asteroid.scale.x) {
-                        asteroid.health -= 5;
-                        if (asteroid.health <= 0) {
-                            scene.remove(asteroid); asteroids.splice(j, 1); score++; document.getElementById('score').innerText = score;
-                        }
+                    if (laser.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30)) {
+                        damageAsteroid(asteroid, 5);
                         if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); laserRemoved = true; break; }
                     }
                 }
                 if (laserRemoved) continue;
-                // Cek alien
                  for (let k = aliens.length - 1; k >= 0; k--) {
                     const alien = aliens[k];
                     if (laser.position.distanceTo(alien.position) < 10) {
@@ -951,7 +1020,6 @@
                     }
                 }
             }
-            // Laser alien mengenai pemain
             for(let i = alienLasers.length - 1; i >= 0; i--) {
                 const laser = alienLasers[i];
                 if (shipGroup && laser.position.distanceTo(shipGroup.position) < 5) {
