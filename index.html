@@ -1495,8 +1495,8 @@
         }
         // --- KONTROL & GERAKAN ---
         const keyboard = {};
-        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase() === ' ' ? ' ' : e.key] = true; handleAccessoryKeyPress(e.key); });
-        window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase() === ' ' ? ' ' : e.key] = false; });
+        window.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); keyboard[key] = true; handleAccessoryKeyPress(key); });
+        window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
         
         function setCameraMode(newMode) {
             if (!isGameStarted || isGameOver || cameraMode === newMode) return;
