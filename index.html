@@ -541,9 +541,7 @@
             currentMissionIndex = 0;
             const firstMission = MISSIONS[currentMissionIndex];
             document.getElementById('mission-title').innerText = firstMission.name;
-            const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
-            const texture = textureLoader.load(textureUrl);
-            const targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
+            const targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
             target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
             target.object.position.z = -firstMission.distance;
             scene.add(target.object);
@@ -1194,31 +1192,11 @@
             const difficultyIndex = difficultyLevels.indexOf(currentLevel);
             const healthMultiplier = Math.pow(3, difficultyIndex);
 
-            // Mode Realistis: Geometri tidak beraturan dan material standar
-            let asteroidGeometry = new THREE.IcosahedronGeometry(1, 3); // Lebih detail
-            const positionAttribute = asteroidGeometry.getAttribute('position');
-            const tempVertex = new THREE.Vector3();
-            for (let i = 0; i < positionAttribute.count; i++) {
-                tempVertex.fromBufferAttribute(positionAttribute, i);
-                const noise = 0.3 * (Math.random() - 0.5);
-                tempVertex.multiplyScalar(1 + noise);
-                positionAttribute.setXYZ(i, tempVertex.x, tempVertex.y, tempVertex.z);
-            }
-            asteroidGeometry.computeVertexNormals();
-            // Material dasar untuk di-clone, lebih efisien daripada membuat material baru di setiap loop
-            const asteroidTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
-            const asteroidNormalMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1k_normal.jpg');
-            const asteroidMaterial = new THREE.MeshStandardMaterial({ 
-                map: asteroidTexture, 
-                normalMap: asteroidNormalMap, // Menambahkan detail permukaan dengan normal map
-                roughness: 0.9, 
-                metalness: 0.1 
-            });
+            const asteroidGeometry = new THREE.IcosahedronGeometry(1, 0); 
+            const asteroidMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513, flatShading: true });
 
             for (let i = 0; i < count; i++) {
-                const material = asteroidMaterial.clone();
-                material.color.setHSL(0, 0, Math.random() * 0.4 + 0.2); // Variasi warna abu-abu (0.2 - 0.6)
-                const asteroid = new THREE.Mesh(asteroidGeometry, material);
+                const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
                 const zPos = minZ + (Math.random() * distance);
                 asteroid.position.set((Math.random() - 0.5) * rangeX, (Math.random() - 0.5) * rangeY, zPos);
                 const scale = Math.random() * 40 + 15;
@@ -1226,11 +1204,6 @@
                 asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
                 asteroid.health = 15 * healthMultiplier;
                 asteroid.isTargetable = true;
-                asteroid.rotationSpeed = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.01,
-                    (Math.random() - 0.5) * 0.01,
-                    (Math.random() - 0.5) * 0.01
-                );
                 asteroids.push(asteroid);
                 scene.add(asteroid);
             }
@@ -1537,7 +1510,7 @@
         // --- FUNGSI ALIEN & METEOR BEKU ---
         function createAlienShip(position) {
             const alienGroup = new THREE.Group();
-            const saucerMaterial = new THREE.MeshStandardMaterial({ color: 0x9400D3, metalness: 0.5, roughness: 0.6 });
+            const saucerMaterial = new THREE.MeshPhongMaterial({ color: 0x9400D3, flatShading: true });
             const saucerBodyGeo = new THREE.CylinderGeometry(10, 10, 2, 16);
             const saucerBody = new THREE.Mesh(saucerBodyGeo, saucerMaterial);
             alienGroup.add(saucerBody);
@@ -1635,8 +1608,8 @@
             if (alienBoss) return; // Hanya satu bos pada satu waktu
 
             const bossGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5, flatShading: false });
-            const cannonMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.4, flatShading: false });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5, flatShading: true });
+            const cannonMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.4, flatShading: true });
             const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, toneMapped: false });
 
             // Badan utama
@@ -1907,9 +1880,7 @@
                     scene.remove(target.object);
                     const nextMission = MISSIONS[currentMissionIndex];
                     document.getElementById('mission-title').innerText = nextMission.name;
-                    const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
-                    const texture = textureLoader.load(textureUrl);
-                    const targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
+                    const targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
                     target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
                     target.object.position.z = -nextMission.distance;
                     scene.add(target.object);
@@ -1981,16 +1952,7 @@
         }
         function updateScenery() {
             starField.rotation.y += 0.00002;
-            asteroids.forEach(a => { 
-                a.position.add(a.velocity); 
-                if (a.rotationSpeed) {
-                    a.rotation.x += a.rotationSpeed.x;
-                    a.rotation.y += a.rotationSpeed.y;
-                    a.rotation.z += a.rotationSpeed.z;
-                } else {
-                    a.rotation.x += 0.005; a.rotation.y += 0.005; 
-                }
-            });
+            asteroids.forEach(a => { a.position.add(a.velocity); a.rotation.x += 0.005; a.rotation.y += 0.005; });
         }
         function updateMinimap() {
             if (!minimapCtx || !shipGroup) return;
