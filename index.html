@@ -569,7 +569,6 @@
             startScreen.innerHTML = `
                 <h2>PENJELAJAH LUAR ANGKASA</h2>
                 <button onclick="showDifficultyMenu()">PLAY</button>
-                <button onclick="showHangar()">MORE</button>
                 <button onclick="showHangar()">HANGAR</button>
                 <button onclick="showHangar('settings-content')">PENGATURAN</button>
             `;
@@ -621,7 +620,6 @@
             animate();
         }
         // --- UI & NAVIGASI MENU ---
-        function showHangar() {
         function showHangar(initialTab = 'hangar-content') {
             document.getElementById('start-screen').style.display = 'none';
             const hangarScreen = document.getElementById('hangar-screen');
@@ -630,7 +628,6 @@
             populateAccessoryGrid();
             populateCrateGrid();
             populateSettingsGrid();
-            showTab('hangar-content');
             showTab(initialTab);
         }
         function showTab(tabId) {
