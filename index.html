@@ -1246,17 +1246,6 @@
             planetMesh.add(sprite);
         }
         function createScenery() {
-            const starVertices1 = [];
-            for (let i = 0; i < 300000; i++) {
-                const x = (Math.random() - 0.5) * 5000000, y = (Math.random() - 0.5) * 5000000, z = (Math.random() - 0.5) * 5000000;
-                starVertices1.push(x, y, z);
-            }
-            const starsGeometry1 = new THREE.BufferGeometry();
-            starsGeometry1.setAttribute('position', new THREE.Float32BufferAttribute(starVertices1, 3));
-            starField = new THREE.Points(starsGeometry1, new THREE.PointsMaterial({ color: 0xffffff, size: 3.5 }));
-            scene.add(starField);
-        }
-        function createScenery() {
             const isRealistic = playerData.settings && playerData.settings.realisticMode;
 
             if (isRealistic) {
@@ -1875,17 +1864,6 @@
             }
         }
 
-        function updateAlienLasers() {
-             for (let i = alienLasers.length - 1; i >= 0; i--) {
-                const laser = alienLasers[i];
-                laser.position.add(laser.velocity);
-                if (laser.position.distanceTo(shipGroup.position) > 4000) {
-                    scene.remove(laser);
-                    alienLasers.splice(i, 1);
-                }
-            }
-        }
-        
         function updateAlienLasers() {
              for (let i = alienLasers.length - 1; i >= 0; i--) {
                 const laser = alienLasers[i];
