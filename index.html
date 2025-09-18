@@ -205,6 +205,37 @@
         #joystick-thumb { width: 60px; height: 60px; background-color: #eee; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         #fire-button { width: 100px; height: 100px; background-color: rgba(255, 0, 0, 0.7); border: 2px solid #ff0000; display: flex; justify-content: center; align-items: center; font-size: 1.5em; }
         @media (max-width: 768px) { #mobile-controls { display: flex; } }
+        .camera-controls-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        .camera-btn {
+            background-color: var(--light-bg);
+            border: 1px solid #777;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .camera-btn:hover {
+            background-color: #555;
+        }
+        .camera-btn.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: black;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -212,8 +243,7 @@
         <h1>Misi: <span id="mission-title">Jupiter</span></h1>
         <p>Tugas: Capai target, hancurkan asteroid!</p>
         <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
-        <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>
-        <p><b>Kamera (C):</b> <span id="camera-mode-info">Belakang</span></p>
+        <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>        
         <p><b>Klik Kiri:</b> Fokus Target Sword Sensor</p>
         <p id="distance-info">Jarak ke Target: ...</p>
     </div>
@@ -285,6 +315,11 @@
         <button onclick="document.getElementById('crate-result-screen').style.display = 'none'; showHangar();">Tutup</button>
     </div>
     <div id="dim-overlay" class="overlay" style="display:none;"></div>
+    <div id="camera-controls-container" class="camera-controls-container">
+        <button id="cam-btn-belakang" class="camera-btn active" onclick="setCameraMode(0)">Belakang</button>
+        <button id="cam-btn-depan" class="camera-btn" onclick="setCameraMode(1)">Depan</button>
+        <button id="cam-btn-kokpit" class="camera-btn" onclick="setCameraMode(2)">Kokpit</button>
+    </div>
     <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div><div id="fire-button">TEMBAK</div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -909,20 +944,23 @@
         const keyboard = {};
         window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; handleAccessoryKeyPress(e.key); });
         window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
-        window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'c') switchCameraMode(); });
+        
+        function setCameraMode(newMode) {
+            if (!isGameStarted || isGameOver || cameraMode === newMode) return;
+            cameraMode = newMode;
 
-        function switchCameraMode() {
-            if (!isGameStarted || isGameOver) return;
-            cameraMode = (cameraMode + 1) % 3;
-            const cameraModeInfo = document.getElementById('camera-mode-info');
-            cameraModeInfo.innerText = cameraModes[cameraMode];
+            // Update button active state
+            document.querySelectorAll('.camera-btn').forEach(btn => btn.classList.remove('active'));
+            if (newMode === 0) document.getElementById('cam-btn-belakang').classList.add('active');
+            else if (newMode === 1) document.getElementById('cam-btn-depan').classList.add('active');
+            else if (newMode === 2) document.getElementById('cam-btn-kokpit').classList.add('active');
 
             // Hapus kamera dari parent sebelumnya untuk menghindari duplikasi
             if (camera.parent) {
                 camera.parent.remove(camera);
             }
 
-            if (cameraMode === 2) { // Mode Kokpit
+            if (newMode === 2) { // Mode Kokpit
                 shipGroup.add(camera);
                 // Atur posisi & rotasi lokal kamera relatif terhadap pesawat
                 camera.position.set(0, 0.5, 1.5); 
