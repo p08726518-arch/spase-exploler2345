@@ -14,6 +14,11 @@
             --medium-bg: #222;
             --light-bg: #333;
         }
+        :root {
+            /* Variabel untuk ukuran UI, dikontrol oleh JS */
+            --ui-scale: 1;
+        }
+
         body {
             margin: 0;
             overflow: hidden;
@@ -212,6 +217,13 @@
         .nav-tab { background: none; border: none; color: #888; padding: 15px 30px; font-size: 1.5em; cursor: pointer; }
         .nav-tab.active { color: var(--secondary-color); border-bottom: 3px solid var(--secondary-color); }
         /* Kontrol Mobile */
+        /* Pengaturan UI */
+        #settings-content .card { text-align: left; }
+        #settings-content .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: calc(12px * var(--ui-scale)); }
+        #settings-content .setting-row label { font-size: calc(1em * var(--ui-scale)); }
+        #settings-content .setting-row button, #settings-content .setting-row .key-display { min-width: 120px; font-size: calc(0.9em * var(--ui-scale)); padding: 8px; }
+        #settings-content .key-display { background-color: var(--dark-bg); border: 1px solid #777; text-align: center; display: inline-block; }
+        #settings-content input[type="range"] { width: 150px; }
         #mobile-controls { display: none; position: absolute; bottom: 20px; left: 20px; z-index: 300; flex-direction: row; justify-content: space-between; width: calc(100% - 40px); }
         #joystick-area, #fire-button { background-color: rgba(50, 50, 50, 0.7); border: 2px solid #888; border-radius: 50%; }
         #joystick-area { width: 150px; height: 150px; position: relative; }
@@ -249,6 +261,19 @@
             color: black;
             font-weight: bold;
         }
+        #key-remap-prompt, #subtle-notification {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px;
+            background-color: rgba(20, 20, 20, 0.95);
+            border: 2px solid var(--secondary-color);
+            border-radius: 10px;
+            z-index: 999;
+            display: none;
+        }
+        #key-remap-prompt { top: 40%; }
+        #subtle-notification { top: 20px; border-color: var(--primary-color); transition: opacity 0.5s, top 0.5s; }
     </style>
 </head>
 <body>
@@ -296,6 +321,7 @@
                 <button class="nav-tab active" onclick="showTab('hangar-content')">HANGGAR</button>
                 <button class="nav-tab" onclick="showTab('shop-content')">AKSESORIS</button>
                 <button class="nav-tab" onclick="showTab('crate-content')">CRATE</button>
+                <button class="nav-tab" onclick="showTab('settings-content')">PENGATURAN</button>
             </div>
             <div id="hangar-content">
                 <h2>HANGGAR PESAWAT</h2>
@@ -312,6 +338,10 @@
                 <p>Buka crate untuk kesempatan mendapatkan pesawat langka!</p>
                 <div id="crate-grid" class="grid-container"></div>
             </div>
+            <div id="settings-content" style="display:none;">
+                <h2>PENGATURAN</h2>
+                <div id="settings-container"></div>
+            </div>
         </div>
         <button onclick="showMainMenu()" style="position: fixed; bottom: 20px; left: 20px; min-width: 150px;">Kembali ke Menu</button>
     </div>
@@ -327,6 +357,8 @@
         <button onclick="document.getElementById('crate-result-screen').style.display = 'none'; showHangar();">Tutup</button>
     </div>
     <div id="dim-overlay" class="overlay" style="display:none;"></div>
+    <div id="key-remap-prompt">Tekan tombol baru...</div>
+    <div id="subtle-notification"></div>
     <div id="camera-controls-container" class="camera-controls-container">
         <button id="cam-btn-belakang" class="camera-btn active" onclick="setCameraMode(0)">Belakang</button>
         <button id="cam-btn-depan" class="camera-btn" onclick="setCameraMode(1)">Depan</button>
@@ -381,6 +413,26 @@
                 pointBooster: { level: 0 },
                 friends: { level: 0 },
             },
+            settings: {
+                screenMode: 'windowed',
+                keys: {
+                    forward: 'w',
+                    backward: 's',
+                    turnLeft: 'arrowleft',
+                    turnRight: 'arrowright',
+                    ascend: 'pageup',
+                    descend: 'pagedown',
+                    fire: ' ',
+                    shield: '1',
+                    speedBoost: '2',
+                    warmth: '3'
+                },
+                invertY: false,
+                autoFire: false,
+                cameraShake: true,
+                uiTextSize: 1.0,
+                missionNotification: 'popup'
+            }
         };
         // UI Elements
         const pointsInfo = document.getElementById('points');
@@ -469,6 +521,7 @@
                 const parsedData = JSON.parse(savedData);
                 playerData = { ...defaultPlayerData, ...parsedData };
                 playerData.accessories = { ...defaultPlayerData.accessories, ...parsedData.accessories };
+                playerData.settings = { ...defaultPlayerData.settings, ...parsedData.settings };
             } else {
                 playerData = JSON.parse(JSON.stringify(defaultPlayerData));
             }
@@ -477,6 +530,7 @@
         function savePlayerData() {
             localStorage.setItem('spaceExplorerData', JSON.stringify(playerData));
             pointsInfo.innerText = playerData.points.toLocaleString();
+            applySettings();
         }
         function init() {
             generateShipDatabase();
@@ -484,6 +538,7 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
             createScenery();
+            applySettings();
             setupJoystick();
             showMainMenu();
             minimapCanvas = document.getElementById('minimap-canvas');
@@ -491,6 +546,10 @@
             window.addEventListener('mousedown', onMouseDown, false);
             checkPing(); // Cek ping saat pertama kali load
             setInterval(checkPing, 5000); // Cek ping setiap 5 detik
+        }
+        function applySettings() {
+            // Terapkan pengaturan yang memengaruhi CSS atau state awal
+            document.documentElement.style.setProperty('--ui-scale', playerData.settings.uiTextSize);
         }
         function populateDifficultyButtons() {
             const grid = document.getElementById('difficulty-grid');
@@ -565,10 +624,11 @@
             populateShipGrid();
             populateAccessoryGrid();
             populateCrateGrid();
+            populateSettingsGrid();
             showTab('hangar-content');
         }
         function showTab(tabId) {
-            ['hangar-content', 'shop-content', 'crate-content'].forEach(id => {
+            ['hangar-content', 'shop-content', 'crate-content', 'settings-content'].forEach(id => {
                 document.getElementById(id).style.display = 'none';
             });
             document.getElementById(tabId).style.display = 'block';
@@ -724,6 +784,151 @@
             savePlayerData();
             populateCrateGrid();
             document.getElementById('crate-result-screen').style.display = 'flex';
+        }
+        function populateSettingsGrid() {
+            const container = document.getElementById('settings-container');
+            container.innerHTML = '';
+
+            const createCard = (title) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `<h3>${title}</h3>`;
+                container.appendChild(card);
+                return card;
+            };
+
+            const createRow = (card, label, element) => {
+                const row = document.createElement('div');
+                row.className = 'setting-row';
+                row.innerHTML = `<label>${label}</label>`;
+                row.appendChild(element);
+                card.appendChild(row);
+            };
+
+            // --- KARTU TAMPILAN ---
+            const displayCard = createCard('Tampilan');
+            const fullscreenBtn = document.createElement('button');
+            fullscreenBtn.textContent = document.fullscreenElement ? 'Keluar Layar Penuh' : 'Layar Penuh';
+            fullscreenBtn.onclick = () => toggleFullscreen();
+            createRow(displayCard, 'Mode Layar', fullscreenBtn);
+
+            const shakeBtn = document.createElement('button');
+            shakeBtn.textContent = playerData.settings.cameraShake ? 'ON' : 'OFF';
+            shakeBtn.onclick = () => { playerData.settings.cameraShake = !playerData.settings.cameraShake; savePlayerData(); populateSettingsGrid(); };
+            createRow(displayCard, 'Guncangan Kamera', shakeBtn);
+
+            const uiSizeSlider = document.createElement('input');
+            uiSizeSlider.type = 'range';
+            uiSizeSlider.min = 0.8; uiSizeSlider.max = 1.5; uiSizeSlider.step = 0.1;
+            uiSizeSlider.value = playerData.settings.uiTextSize;
+            uiSizeSlider.oninput = (e) => { playerData.settings.uiTextSize = parseFloat(e.target.value); applySettings(); };
+            uiSizeSlider.onchange = () => savePlayerData(); // Simpan saat selesai menggeser
+            createRow(displayCard, 'Ukuran Teks UI', uiSizeSlider);
+
+            // --- KARTU KONTROL ---
+            const controlsCard = createCard('Kontrol');
+            const keyMapActions = {
+                forward: 'Maju', backward: 'Mundur', turnLeft: 'Belok Kiri', turnRight: 'Belok Kanan',
+                ascend: 'Naik', descend: 'Turun', fire: 'Tembak', shield: 'Perisai', speedBoost: 'Kecepatan', warmth: 'Pemanas'
+            };
+            for (const action in keyMapActions) {
+                const btn = document.createElement('button');
+                let keyName = playerData.settings.keys[action];
+                if (keyName === ' ') keyName = 'Spasi';
+                btn.textContent = keyName.toUpperCase();
+                btn.onclick = () => changeKey(action);
+                createRow(controlsCard, keyMapActions[action], btn);
+            }
+
+            const invertYBtn = document.createElement('button');
+            invertYBtn.textContent = playerData.settings.invertY ? 'ON' : 'OFF';
+            invertYBtn.onclick = () => { playerData.settings.invertY = !playerData.settings.invertY; savePlayerData(); populateSettingsGrid(); };
+            createRow(controlsCard, 'Invert Y-Axis', invertYBtn);
+
+            const autoFireBtn = document.createElement('button');
+            autoFireBtn.textContent = playerData.settings.autoFire ? 'ON' : 'OFF';
+            autoFireBtn.onclick = () => { playerData.settings.autoFire = !playerData.settings.autoFire; savePlayerData(); populateSettingsGrid(); };
+            createRow(controlsCard, 'Auto-Fire', autoFireBtn);
+
+            // --- KARTU GAMEPLAY ---
+            const gameplayCard = createCard('Gameplay');
+            const notifContainer = document.createElement('div');
+            ['popup', 'subtle', 'off'].forEach(mode => {
+                const btn = document.createElement('button');
+                btn.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+                if (playerData.settings.missionNotification === mode) btn.classList.add('active');
+                btn.onclick = () => { playerData.settings.missionNotification = mode; savePlayerData(); populateSettingsGrid(); };
+                notifContainer.appendChild(btn);
+            });
+            createRow(gameplayCard, 'Notifikasi Misi', notifContainer);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+            // Beri sedikit waktu agar browser memproses sebelum update UI
+            setTimeout(populateSettingsGrid, 200);
+        }
+
+        function changeKey(action) {
+            const prompt = document.getElementById('key-remap-prompt');
+            prompt.innerHTML = `Tekan tombol baru untuk: <b>${action.toUpperCase()}</b>... (ESC untuk batal)`;
+            prompt.style.display = 'block';
+
+            const keyListener = (e) => {
+                e.preventDefault();
+                if (e.key !== 'Escape') {
+                    playerData.settings.keys[action] = e.key.toLowerCase() === ' ' ? ' ' : e.key;
+                    savePlayerData();
+                }
+                prompt.style.display = 'none';
+                window.removeEventListener('keydown', keyListener, true);
+                populateSettingsGrid();
+            };
+
+            window.addEventListener('keydown', keyListener, true);
+        }
+
+        function showSubtleNotification(title, desc, points) {
+            const notif = document.getElementById('subtle-notification');
+            notif.innerHTML = `<h3>${title}</h3><p>${desc}</p><p><b>+${points.toLocaleString()} Poin</b></p>`;
+            notif.style.top = '20px';
+            notif.style.opacity = '1';
+            notif.style.display = 'block';
+
+            setTimeout(() => {
+                notif.style.top = '-100px';
+                notif.style.opacity = '0';
+            }, 5000);
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 5500);
+        }
+
+        function shakeCamera(intensity = 0.3, duration = 200) {
+            if (!playerData.settings.cameraShake) return;
+            const originalPos = camera.position.clone();
+            let startTime = Date.now();
+
+            function shake() {
+                const elapsedTime = Date.now() - startTime;
+                if (elapsedTime > duration) {
+                    camera.position.copy(originalPos);
+                    return;
+                }
+                const shakeAmount = intensity * (1 - (elapsedTime / duration));
+                camera.position.x += (Math.random() - 0.5) * shakeAmount;
+                camera.position.y += (Math.random() - 0.5) * shakeAmount;
+                requestAnimationFrame(shake);
+            }
+            shake();
         }
         // --- PEMBUATAN OBJEK & STATS ---
         function setupShipStats(shipData) {
@@ -1210,8 +1415,8 @@
         }
         // --- KONTROL & GERAKAN ---
         const keyboard = {};
-        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; handleAccessoryKeyPress(e.key); });
-        window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
+        window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase() === ' ' ? ' ' : e.key] = true; handleAccessoryKeyPress(e.key); });
+        window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase() === ' ' ? ' ' : e.key] = false; });
         
         function setCameraMode(newMode) {
             if (!isGameStarted || isGameOver || cameraMode === newMode) return;
@@ -1238,7 +1443,7 @@
             }
         }
 
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); fireProjectile(); }});
+        window.addEventListener('keydown', (e) => { if (e.key === playerData.settings.keys.fire) { e.preventDefault(); }});
         
         function onMouseDown(event) {
             event.preventDefault();
@@ -1270,8 +1475,10 @@
             const fuelConsumptionRate = 5;
             const verticalAccel = 0.1;
             const maxVerticalSpeed = 5;
+            const keys = playerData.settings.keys;
+            const yMultiplier = playerData.settings.invertY ? -1 : 1;
 
-            if ((keyboard['w']) && currentFuel > 0) {
+            if ((keyboard[keys.forward]) && currentFuel > 0) {
                  speed = Math.min(speed + acceleration, currentMaxSpeed);
                  currentFuel -= fuelConsumptionRate * (deltaTime / 1000);
             } else {
@@ -1280,11 +1487,11 @@
                 }
             }
             
-            if (keyboard['s']) { speed = Math.max(speed - acceleration, -maxSpeed / 2); }
-            if (keyboard['arrowleft']) { angularVelocity = Math.min(angularVelocity + 0.002, turnSpeed); }
-            if (keyboard['arrowright']) { angularVelocity = Math.max(angularVelocity - 0.002, -turnSpeed); }
-            if (keyboard['pageup']) { verticalSpeed = Math.min(verticalSpeed + verticalAccel, maxVerticalSpeed); }
-            if (keyboard['pagedown']) { verticalSpeed = Math.max(verticalSpeed - verticalAccel, -maxVerticalSpeed); }
+            if (keyboard[keys.backward]) { speed = Math.max(speed - acceleration, -maxSpeed / 2); }
+            if (keyboard[keys.turnLeft]) { angularVelocity = Math.min(angularVelocity + 0.002, turnSpeed); }
+            if (keyboard[keys.turnRight]) { angularVelocity = Math.max(angularVelocity - 0.002, -turnSpeed); }
+            if (keyboard[keys.ascend]) { verticalSpeed = Math.min(verticalSpeed + verticalAccel * yMultiplier, maxVerticalSpeed); }
+            if (keyboard[keys.descend]) { verticalSpeed = Math.max(verticalSpeed - verticalAccel * yMultiplier, -maxVerticalSpeed); }
 
             speed *= shipDrift;
             angularVelocity *= shipInertia;
@@ -1341,6 +1548,7 @@
 
                 if (asteroid.isFrozenMeteor && !asteroid.isFragment) {
                     createFrozenFragments(asteroid.position, asteroid.velocity);
+                    shakeCamera(0.5, 300);
                     const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
                     playerData.points += Math.round(100 * DIFFICULTY_SETTINGS[currentLevel].pointMultiplier * pointMultiplier);
                     savePlayerData();
@@ -1757,17 +1965,18 @@
         function handleAccessoryKeyPress(key) {
             if (isGameOver || isPaused) return;
             const now = Date.now();
-            if (key === '1' && playerData.accessories.shield.level > 0 && now > accessoryCooldowns.shield) {
+            const keys = playerData.settings.keys;
+            if (key === keys.shield && playerData.accessories.shield.level > 0 && now > accessoryCooldowns.shield) {
                 const level = playerData.accessories.shield.level;
                 shieldActive = true;
                 accessoryCooldowns.shield = now + (60 - level) * 1000;
                 setTimeout(() => shieldActive = false, (14 + level) * 1000);
-            } else if (key === '2' && playerData.accessories.speed.level > 0 && now > accessoryCooldowns.speed) {
+            } else if (key === keys.speedBoost && playerData.accessories.speed.level > 0 && now > accessoryCooldowns.speed) {
                  const level = playerData.accessories.speed.level;
                 speedBoostActive = true;
                 accessoryCooldowns.speed = now + (50 - level) * 1000;
                 setTimeout(() => speedBoostActive = false, (11 + level) * 1000);
-            } else if (key === '3' && playerData.accessories.warmth.level > 0 && now > accessoryCooldowns.warmth) {
+            } else if (key === keys.warmth && playerData.accessories.warmth.level > 0 && now > accessoryCooldowns.warmth) {
                  const level = playerData.accessories.warmth.level;
                 warmthActive = true;
                 isFrozen = false;
@@ -1782,6 +1991,7 @@
         function takeDamage(amount) {
             if (isGameOver || shieldActive) return;
             currentHealth -= amount;
+            shakeCamera(0.4, 250);
             if (currentHealth <= 0) {
                 currentHealth = 0;
                 isGameOver = true;
@@ -1792,11 +2002,13 @@
         function checkCollisions() {
              if (alienBoss && shipGroup.position.distanceTo(alienBoss.position) < 25 + 4) {
                 takeDamage(50); // Kerusakan tabrakan tinggi
+                shakeCamera(1.0, 500);
                 if (isGameOver) return;
             }
              for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
                  if (shipGroup.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30) + 4) { // Radius tabrakan pesawat disesuaikan
+                    shakeCamera(0.8, 400);
                     takeDamage(20); // Kerusakan akibat tabrakan
                     damageAsteroid(asteroid, 1000); // collision instantly destroys it
                     if (isGameOver) return;
@@ -1809,6 +2021,9 @@
                 for (let j = asteroids.length - 1; j >= 0; j--) {
                     const asteroid = asteroids[j];
                     if (laser.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30)) {
+                        if (shipGroup.position.distanceTo(asteroid.position) < 500) {
+                            shakeCamera(0.2, 150);
+                        }
                         damageAsteroid(asteroid, 5);
                         if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); laserRemoved = true; break; }
                     }
@@ -1818,6 +2033,7 @@
                     const alien = aliens[k];
                     if (laser.position.distanceTo(alien.position) < 10) {
                         alien.health -= 5;
+                        shakeCamera(0.1, 100);
                          if (alien.health <= 0) {
                             scene.remove(alien); aliens.splice(k, 1);
                             const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
@@ -1830,6 +2046,7 @@
                 if (alienBoss) {
                     if (laser.position.distanceTo(alienBoss.position) < 25) { // Hitbox bos lebih besar
                         alienBoss.health -= 5;
+                        shakeCamera(0.3, 200);
                         if (alienBoss.health <= 0) {
                             const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
                             playerData.points += Math.round(5000 * pointMultiplier); // Hadiah poin besar
@@ -1887,7 +2104,13 @@
                     const settings = DIFFICULTY_SETTINGS[currentLevel];
                     const currentZ = shipGroup.position.z;
                     createAsteroids(settings.asteroidCount, 0.5, -nextMission.distance, currentZ);
-                    alert(`Misi Baru: ${nextMission.name}\n${nextMission.desc}\nPoin Bonus: ${pointsWon.toLocaleString()}`);
+                    
+                    if (playerData.settings.missionNotification === 'popup') {
+                        alert(`Misi Baru: ${nextMission.name}\n${nextMission.desc}\nPoin Bonus: ${pointsWon.toLocaleString()}`);
+                    } else if (playerData.settings.missionNotification === 'subtle') {
+                        showSubtleNotification(`Misi Baru: ${nextMission.name}`, nextMission.desc, pointsWon);
+                    }
+
                     timeUntilFreeze = freezeTimer * settings.freezeResist;
                 }
             }
@@ -1901,6 +2124,9 @@
             lastTime = currentTime;
             if (isGameStarted && !isPaused) {
                 updateShipMovement(deltaTime);
+                if (playerData.settings.autoFire) {
+                    fireProjectile();
+                }
                 updateLasers();
                 updateAliens(deltaTime);
                 updateAlienLasers();
@@ -2017,7 +2243,7 @@
             });
         }
         function fireProjectile() {
-            if (isFrozen || isPaused || isGameOver || !shipGroup) return;
+            if (isFrozen || isPaused || isGameOver || !shipGroup || (keyboard[playerData.settings.keys.fire] && !playerData.settings.autoFire)) return;
 
             // Cooldown untuk mencegah spam
             const now = Date.now();
