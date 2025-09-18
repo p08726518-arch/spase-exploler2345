@@ -32,6 +32,19 @@
         #info { top: 10px; left: 10px; max-width: 300px; }
         #stats { top: 10px; right: 10px; text-align: right; }
         #accessory-status { bottom: 90px; right: 10px; }
+        #network-status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ccc; /* Warna default */
+            margin-right: 5px;
+            vertical-align: middle;
+            transition: background-color 0.5s ease;
+        }
+        #network-status-indicator.good { background-color: var(--success-color); }
+        #network-status-indicator.medium { background-color: var(--secondary-color); }
+        #network-status-indicator.bad { background-color: var(--danger-color); }
         #accessory-status p { margin: 4px 0; font-size: 0.9em; }
         #minimap-container {
             position: absolute;
@@ -250,6 +263,7 @@
     <div id="stats">
         <p>Poin: <span id="points">0</span></p>
         <p>Asteroid: <span id="score">0</span></p>
+        <p>Jaringan: <span id="network-status-indicator"></span> <span id="ping-value">...</span></p>
     </div>
     <div id="minimap-container">
         <canvas id="minimap-canvas" width="200" height="200"></canvas>
@@ -370,6 +384,8 @@
         };
         // UI Elements
         const pointsInfo = document.getElementById('points');
+        const networkIndicator = document.getElementById('network-status-indicator');
+        const pingValue = document.getElementById('ping-value');
         // --- DATABASE GAME ---
         const SPACESHIPS = []; // Diisi secara dinamis
         const ACCESSORIES = {
@@ -462,6 +478,8 @@
             minimapCanvas = document.getElementById('minimap-canvas');
             minimapCtx = minimapCanvas.getContext('2d');
             window.addEventListener('mousedown', onMouseDown, false);
+            checkPing(); // Cek ping saat pertama kali load
+            setInterval(checkPing, 5000); // Cek ping setiap 5 detik
         }
         function populateDifficultyButtons() {
             const grid = document.getElementById('difficulty-grid');
@@ -906,49 +924,26 @@
                     shipGroup.add(glow1);
                     break;
                 }
-                case 6: { // ID 36-41: Luxury/Royal (Eclipse, Voidreaver, etc.)
-                    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.2 });
-                    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, metalness: 0.5, roughness: 0.1 });
-                    const royalGlowMat = new THREE.MeshBasicMaterial({ color: 0xeeeeff, toneMapped: false });
-
-                    // Badan melengkung dan elegan menggunakan LatheGeometry
+                case 6: { // ID 36-41: Bio-Organic
+                    const bioMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x228B22), metalness: 0.1, roughness: 0.8 });
                     const points = [];
-                    for (let i = 0; i < 10; i++) {
-                        points.push(new THREE.Vector2(Math.sin(i * 0.3) * 0.8 + 0.4, (i - 5) * 1.2));
-                    }
+                    for (let i = 0; i < 10; i++) { points.push(new THREE.Vector2(Math.sin(i * 0.2) * 1.5 + 0.5, (i - 5) * 0.8)); }
                     const bodyGeo = new THREE.LatheGeometry(points, 12);
-                    const body = new THREE.Mesh(bodyGeo, whiteMat);
+                    const body = new THREE.Mesh(bodyGeo, bioMat);
                     body.rotation.x = Math.PI / 2;
                     shipGroup.add(body);
-
-                    // Kokpit panorama yang besar
-                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 16, 0, Math.PI), cockpitMaterial);
-                    cockpit.position.set(0, 0.5, 4);
+                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), cockpitMaterial);
+                    cockpit.position.set(0, 0.5, 3.5);
                     shipGroup.add(cockpit);
-
-                    // Sayap melengkung ke atas dengan aksen emas
                     const finShape = new THREE.Shape();
-                    finShape.moveTo(0, 0);
-                    finShape.bezierCurveTo(2, 1.5, 5, 1.5, 6, 0);
-                    finShape.lineTo(5.5, -0.5);
-                    finShape.bezierCurveTo(4.5, 1.0, 2, 1.0, 0, -0.2);
-                    const wingGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.15, bevelEnabled: false });
-
-                    const rightWing = new THREE.Mesh(wingGeo, goldMat);
-                    rightWing.position.set(1, 0, -1);
-                    rightWing.rotation.y = -0.2;
-                    shipGroup.add(rightWing);
-
-                    const leftWing = new THREE.Mesh(wingGeo.clone(), goldMat);
-                    leftWing.scale.x = -1;
-                    leftWing.position.set(-1, 0, -1);
-                    leftWing.rotation.y = 0.2;
-                    shipGroup.add(leftWing);
-
-                    // Mesin tersembunyi dengan glow lembut
-                    const glow = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.5), royalGlowMat);
-                    glow.position.set(0, 0, -6.1);
-                    shipGroup.add(glow);
+                    finShape.moveTo(0, 0); finShape.bezierCurveTo(2, 1, 3, -1, 0, -0.5);
+                    const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.2, bevelEnabled: false });
+                    const fin = new THREE.Mesh(finGeo, bioMat);
+                    fin.position.set(0.5, 0, 0);
+                    shipGroup.add(fin);
+                    const engine = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), bioMat);
+                    engine.position.set(0, 0, -4.5);
+                    shipGroup.add(engine);
                     break;
                 }
                 case 7: { // ID 42-47: Stealth
@@ -1957,6 +1952,32 @@
                 const projectile = ship.projectile || { type: 'standard' };
                 SPACESHIPS.push({ ...ship, stats: { health: 100 + (index * 30), maxSpeed: 18 + (index * 0.9), fuel: 250 + (index * 25), accel: 0.18 + (index * 0.009), turn: 0.035 + (index * 0.0006), laserSpeed: 60 + (index * 3.5), refuelRate: 2 + (index * 0.1), projectile: projectile }});
             });
+        }
+        async function checkPing() {
+            // Fitur ini mengukur waktu respons dari server tempat game di-host.
+            // Ini akan berfungsi dengan baik saat file diunggah ke server web,
+            // tetapi akan menunjukkan latensi ~0ms atau error jika dijalankan secara lokal dari file.
+            const startTime = Date.now();
+            try {
+                // Menggunakan HEAD request ke resource yang sama untuk efisiensi, dengan cache-busting
+                await fetch(window.location.href.split('?')[0] + '?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+                const latency = Date.now() - startTime;
+                
+                pingValue.textContent = `${latency} ms`;
+                networkIndicator.className = 'network-status-indicator'; // Reset kelas
+
+                if (latency <= 79) {
+                    networkIndicator.classList.add('good');
+                } else if (latency <= 97) {
+                    networkIndicator.classList.add('medium');
+                } else { // > 97ms
+                    networkIndicator.classList.add('bad');
+                }
+            } catch (e) {
+                pingValue.textContent = 'N/A';
+                networkIndicator.className = 'network-status-indicator';
+                networkIndicator.classList.add('bad');
+            }
         }
         function setupJoystick() { /* Logika joystick dari kode lama */ }
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }, false);
