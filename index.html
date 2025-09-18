@@ -431,7 +431,9 @@
                 autoFire: false,
                 cameraShake: true,
                 uiTextSize: 1.0,
-                missionNotification: 'popup'
+                missionNotification: 'popup',
+                mouseSensitivity: 1.0,
+                joystickSensitivity: 1.0
             }
         };
         // UI Elements
@@ -568,6 +570,8 @@
                 <h2>PENJELAJAH LUAR ANGKASA</h2>
                 <button onclick="showDifficultyMenu()">PLAY</button>
                 <button onclick="showHangar()">MORE</button>
+                <button onclick="showHangar()">HANGAR</button>
+                <button onclick="showHangar('settings-content')">PENGATURAN</button>
             `;
             document.getElementById('hangar-screen').style.display = 'none';
         }
@@ -618,6 +622,7 @@
         }
         // --- UI & NAVIGASI MENU ---
         function showHangar() {
+        function showHangar(initialTab = 'hangar-content') {
             document.getElementById('start-screen').style.display = 'none';
             const hangarScreen = document.getElementById('hangar-screen');
             hangarScreen.style.display = 'flex';
@@ -626,6 +631,7 @@
             populateCrateGrid();
             populateSettingsGrid();
             showTab('hangar-content');
+            showTab(initialTab);
         }
         function showTab(tabId) {
             ['hangar-content', 'shop-content', 'crate-content', 'settings-content'].forEach(id => {
@@ -849,6 +855,28 @@
             autoFireBtn.textContent = playerData.settings.autoFire ? 'ON' : 'OFF';
             autoFireBtn.onclick = () => { playerData.settings.autoFire = !playerData.settings.autoFire; savePlayerData(); populateSettingsGrid(); };
             createRow(controlsCard, 'Auto-Fire', autoFireBtn);
+
+            const mouseSensSlider = document.createElement('input');
+            mouseSensSlider.type = 'range';
+            mouseSensSlider.min = 0.2; mouseSensSlider.max = 3.0; mouseSensSlider.step = 0.1;
+            mouseSensSlider.value = playerData.settings.mouseSensitivity || 1.0;
+            mouseSensSlider.oninput = (e) => { 
+                playerData.settings.mouseSensitivity = parseFloat(e.target.value); 
+                // CATATAN: Logika untuk menerapkan sensitivitas ini perlu ditambahkan pada fungsi kontrol mouse.
+            };
+            mouseSensSlider.onchange = () => savePlayerData();
+            createRow(controlsCard, 'Sensitivitas Mouse', mouseSensSlider);
+
+            const joystickSensSlider = document.createElement('input');
+            joystickSensSlider.type = 'range';
+            joystickSensSlider.min = 0.2; joystickSensSlider.max = 3.0; joystickSensSlider.step = 0.1;
+            joystickSensSlider.value = playerData.settings.joystickSensitivity || 1.0;
+            joystickSensSlider.oninput = (e) => { 
+                playerData.settings.joystickSensitivity = parseFloat(e.target.value); 
+                // CATATAN: Logika untuk menerapkan sensitivitas ini perlu ditambahkan pada fungsi kontrol joystick.
+            };
+            joystickSensSlider.onchange = () => savePlayerData();
+            createRow(controlsCard, 'Sensitivitas Joystick', joystickSensSlider);
 
             // --- KARTU GAMEPLAY ---
             const gameplayCard = createCard('Gameplay');
