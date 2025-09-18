@@ -796,46 +796,64 @@
                 leftFin.position.set(-(bodyWidth / 2 - 0.2), 0.75, -bodyLength / 2 + 0.6);
                 shipGroup.add(leftFin);
             }
-            // Tipe Model 3: Pesawat Eksotis/Langka (ID 35+)
+            // Tipe Model 3: Pesawat Tempur Berat/Gunship (ID 35+)
             else {
-                const mainColor = new THREE.Color().setHSL((id % 18) / 18, 0.7, 0.5);
-                const accentColor = new THREE.Color().setHSL(((id + 5) % 18) / 18, 0.7, 0.6);
-                const exoticBodyMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.5, roughness: 0.8 });
-                const exoticWingMat = new THREE.MeshStandardMaterial({ color: accentColor, metalness: 0.9, roughness: 0.4 });
-                const exoticGlowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(((id + 10) % 18) / 18, 1.0, 0.7), toneMapped: false });
+                const bodyLength = 5.0 + ((id - 35) % 5) * 0.3; // Lebih besar dari fighter
+                const wingSpan = 4.0 + ((id - 35) % 5) * 0.4;
 
-                const body = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 6), exoticBodyMat);
-                body.rotation.z = Math.PI / 2;
-                shipGroup.add(body);
+                // Badan lebih lebar dan kokoh
+                const mainBodyGeo = new THREE.CylinderGeometry(0.9, 0.7, bodyLength, 8);
+                const mainBody = new THREE.Mesh(mainBodyGeo, bodyMaterial);
+                mainBody.rotation.x = Math.PI / 2;
+                shipGroup.add(mainBody);
 
-                const wingShape1 = new THREE.Shape();
-                wingShape1.moveTo(0,0); wingShape1.lineTo(5, 2); wingShape1.lineTo(4, -1); wingShape1.lineTo(0,-0.5);
-                const rightWing = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape1, { depth: 0.2, bevelEnabled: false }), exoticWingMat);
-                rightWing.position.set(0, 0.5, 0);
-                rightWing.rotation.x = -0.2;
-                shipGroup.add(rightWing);
-
-                const wingShape2 = new THREE.Shape();
-                wingShape2.moveTo(0,0); wingShape2.lineTo(-4, 1); wingShape2.lineTo(-3, -2); wingShape2.lineTo(0,-0.5);
-                const leftWing = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape2, { depth: 0.2, bevelEnabled: false }), exoticWingMat);
-                leftWing.position.set(0, -0.5, 0.5);
-                leftWing.rotation.x = 0.2;
-                shipGroup.add(leftWing);
-
-                const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), cockpitMaterial);
-                cockpit.position.set(0, 0, 1);
+                const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 2.0), cockpitMaterial);
+                cockpit.position.set(0, 0.8, (bodyLength / 2) - 1.5);
                 shipGroup.add(cockpit);
 
-                const enginePositions = [ new THREE.Vector3(2, 0, -2), new THREE.Vector3(-1.5, 1, -2.5), new THREE.Vector3(-1.5, -1, -2.5) ];
+                // Sayap kecil dan tebal
+                const wingGeo = new THREE.BoxGeometry(wingSpan, 0.25, 1.8);
+                const wings = new THREE.Mesh(wingGeo, wingMaterial);
+                wings.position.z = -1.0;
+                shipGroup.add(wings);
+
+                // Pod senjata di samping
+                const weaponPodGeo = new THREE.BoxGeometry(1.0, 0.8, 3.0);
+                const rightPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
+                rightPod.position.set(1.8, 0, 0.5);
+                shipGroup.add(rightPod);
+                const leftPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
+                leftPod.position.set(-1.8, 0, 0.5);
+                shipGroup.add(leftPod);
+
+                // Empat mesin
+                const engineGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.0, 6);
+                const enginePositions = [
+                    new THREE.Vector3(1.2, 0.4, -bodyLength / 2),
+                    new THREE.Vector3(-1.2, 0.4, -bodyLength / 2),
+                    new THREE.Vector3(1.2, -0.4, -bodyLength / 2),
+                    new THREE.Vector3(-1.2, -0.4, -bodyLength / 2),
+                ];
                 enginePositions.forEach(pos => {
-                    const engine = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), exoticBodyMat);
+                    const engine = new THREE.Mesh(engineGeo, bodyMaterial);
+                    engine.rotation.x = Math.PI / 2;
                     engine.position.copy(pos);
                     shipGroup.add(engine);
-                    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), exoticGlowMat);
-                    glow.position.set(pos.x, pos.y, pos.z - 0.01);
-                    glow.lookAt(shipGroup.position);
+                    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), engineGlowMaterial);
+                    glow.position.set(pos.x, pos.y, pos.z - 1.01);
                     shipGroup.add(glow);
                 });
+
+                // Sirip ekor ganda
+                const finGeo = new THREE.BoxGeometry(0.2, 1.2, 1.2);
+                const rightFin = new THREE.Mesh(finGeo, wingMaterial);
+                rightFin.position.set(1.5, 0, -bodyLength / 2 + 0.6);
+                rightFin.rotation.z = -0.25;
+                shipGroup.add(rightFin);
+                const leftFin = new THREE.Mesh(finGeo, wingMaterial);
+                leftFin.position.set(-1.5, 0, -bodyLength / 2 + 0.6);
+                leftFin.rotation.z = 0.25;
+                shipGroup.add(leftFin);
             }
 
             // Penyesuaian akhir untuk semua model
@@ -1406,7 +1424,9 @@
                             scene.remove(alienBoss);
                             alienBoss = null;
                         }
-                        if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); break; }
+                        if (!laser.isPiercing) { 
+                            scene.remove(laser); lasers.splice(i, 1); laserRemoved = true; break; 
+                        }
                     }
                 }
             }
@@ -1562,27 +1582,142 @@
         }
         function fireProjectile() {
             if (isFrozen || isPaused || isGameOver || !shipGroup) return;
-             const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
 
-             // Atur posisi dan rotasi laser agar keluar dari depan pesawat
-             const direction = new THREE.Vector3();
-             shipGroup.getWorldDirection(direction); // Dapatkan arah hadap pesawat
+            // Cooldown untuk mencegah spam
+            const now = Date.now();
+            const cooldown = currentProjectileStats.type === 'burst' ? 400 : 200;
+            if (shipGroup.lastFireTime && now < shipGroup.lastFireTime + cooldown) {
+                return;
+            }
+            shipGroup.lastFireTime = now;
 
-             const spawnPoint = new THREE.Vector3(0, 0, 2.5); // Posisi lokal di depan pusat pesawat
-             spawnPoint.applyMatrix4(shipGroup.matrixWorld); // Ubah ke koordinat global
+            const createLaser = (spawnOffset, direction) => {
+                const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                const spawnPoint = spawnOffset.clone().applyMatrix4(shipGroup.matrixWorld);
+                
+                laser.position.copy(spawnPoint);
+                
+                // Arahkan laser ke arah kecepatan
+                const targetPosition = laser.position.clone().add(direction);
+                laser.lookAt(targetPosition);
+                laser.rotateX(Math.PI / 2); // Koreksi orientasi untuk silinder
 
-             laser.position.copy(spawnPoint);
-             laser.quaternion.copy(shipGroup.quaternion); // Salin rotasi pesawat
-             laser.rotateX(Math.PI / 2);
-             laser.velocity = direction.multiplyScalar(-laserFireSpeed);
-             lasers.push(laser);
-             scene.add(laser);
+                laser.velocity = direction.clone().multiplyScalar(laserFireSpeed);
+                
+                if (currentProjectileStats.type === 'piercing' || currentProjectileStats.piercing) {
+                    laser.isPiercing = true;
+                }
+
+                lasers.push(laser);
+                scene.add(laser);
+            };
+
+            const baseDirection = new THREE.Vector3();
+            shipGroup.getWorldDirection(baseDirection); // Arah depan adalah Z positif
+
+            const projectileType = currentProjectileStats.type || 'standard';
+            const spawnOrigin = new THREE.Vector3(0, 0, 2.5); // Titik spawn di depan pesawat
+
+            switch (projectileType) {
+                case 'double': {
+                    const rightOffset = new THREE.Vector3(0.5, 0, 2.5);
+                    const leftOffset = new THREE.Vector3(-0.5, 0, 2.5);
+                    createLaser(rightOffset, baseDirection);
+                    createLaser(leftOffset, baseDirection);
+                    break;
+                }
+                case 'spread': {
+                    const count = currentProjectileStats.count || 3;
+                    const spreadAngle = 0.15; // radians
+                    for (let i = 0; i < count; i++) {
+                        const angle = (i - (count - 1) / 2) * spreadAngle;
+                        const spreadDirection = baseDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+                        createLaser(spawnOrigin, spreadDirection);
+                    }
+                    break;
+                }
+                case 'burst': {
+                    const count = currentProjectileStats.count || 3;
+                    const burstDelay = 80;
+                    for (let i = 0; i < count; i++) {
+                        setTimeout(() => {
+                            if (!isGameOver && shipGroup) {
+                                const currentDirection = new THREE.Vector3();
+                                shipGroup.getWorldDirection(currentDirection);
+                                createLaser(spawnOrigin, currentDirection);
+                            }
+                        }, i * burstDelay);
+                    }
+                    break;
+                }
+                case 'piercing':
+                case 'standard':
+                default: {
+                    createLaser(spawnOrigin, baseDirection);
+                    break;
+                }
+            }
         }
         // --- Helper functions ---
         function generateShipDatabase() {
-            const baseShips = [ {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.'},{id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.'},{id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.'},{id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).'},{id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.'},{id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.'},{id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).'},{id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).'},{id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).'},{id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.'},{id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.'},{id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.'},{id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.'},{id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.'},{id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.'},{id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.'},{id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.'},{id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.'},{id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.'},{id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.'},{id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.'},{id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.'},{id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.'},{id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.'},{id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.'},{id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.'},{id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.'},{id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.'},{id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.'},{id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.'},{id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.'},{id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.'},{id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.'},{id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.'},{id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.'},{id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.'},{id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.'},{id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.'},{id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.'},{id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.'},{id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.'},{id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.'},{id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.'},{id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.'},{id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.'},{id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.'},{id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.'},{id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.'},{id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.'},{id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.'},{id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.'},{id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.'},{id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.'},];
+            const baseShips = [
+                {id: 0, name: 'Pioneer', cost: 0, desc: 'Tembakan standar. Pesawat seimbang untuk pemula.', projectile: { type: 'standard' }},
+                {id: 1, name: 'Dart', cost: 100, desc: 'Tembakan standar. Lebih cepat dan lincah.', projectile: { type: 'standard' }},
+                {id: 2, name: 'Bulwark', cost: 120, desc: 'Tembakan standar. Bahan bakar lebih awet.', projectile: { type: 'standard' }},
+                {id: 3, name: 'Hornet', cost: 250, desc: 'Tembakan ganda (double shot).', projectile: { type: 'double' }},
+                {id: 4, name: 'Endurance', cost: 300, desc: 'Tembakan standar. Kapasitas bahan bakar sangat besar.', projectile: { type: 'standard' }},
+                {id: 5, name: 'Interceptor', cost: 800, desc: 'Tembakan ganda. Sangat cepat.', projectile: { type: 'double' }},
+                {id: 6, name: 'Goliath', cost: 1000, desc: 'Tembakan menyebar (spread shot).', projectile: { type: 'spread', count: 3 }},
+                {id: 7, name: 'Javelin', cost: 1500, desc: 'Tembakan penembus (railgun).', projectile: { type: 'piercing' }},
+                {id: 8, name: 'Wasp', cost: 2000, desc: 'Tembakan beruntun 3x (burst fire).', projectile: { type: 'burst', count: 3 }},
+                {id: 9, name: 'Aegis', cost: 2500, desc: 'Tembakan ganda. Seimbang.', projectile: { type: 'double' }},
+                {id: 10, name: 'Comet', cost: 3500, desc: 'Tembakan beruntun 3x. Akselerasi instan.', projectile: { type: 'burst', count: 3 }},
+                {id: 11, name: 'Nomad', cost: 5000, desc: 'Tembakan standar. Efisiensi bahan bakar tinggi.', projectile: { type: 'standard' }},
+                {id: 12, name: 'Stingray', cost: 6000, desc: 'Tembakan penembus. Canggih.', projectile: { type: 'piercing' }},
+                {id: 13, name: 'Wraith', cost: 10000, desc: 'Tembakan beruntun 3x. Siluman cepat.', projectile: { type: 'burst', count: 3 }},
+                {id: 14, name: 'Leviathan', cost: 12000, desc: 'Tembakan menyebar 3x. Bahan bakar masif.', projectile: { type: 'spread', count: 3 }},
+                {id: 15, name: 'Nova', cost: 15000, desc: 'Tembakan ganda cepat. Akselerasi gila.', projectile: { type: 'double' }},
+                {id: 16, name: 'Phantom', cost: 18000, desc: 'Tembakan menyebar 3x. Manuverabilitas tak tertandingi.', projectile: { type: 'spread', count: 3 }},
+                {id: 17, name: 'Valkyrie', cost: 22000, desc: 'Tembakan beruntun 5x.', projectile: { type: 'burst', count: 5 }},
+                {id: 18, name: 'Trident', cost: 28000, desc: 'Tembakan menyebar 3x lebar.', projectile: { type: 'spread', count: 3 }},
+                {id: 19, name: 'Odyssey', cost: 35000, desc: 'Tembakan standar kuat. Untuk misi terpanjang.', projectile: { type: 'standard' }},
+                {id: 20, name: 'Tempest', cost: 45000, desc: 'Tembakan penembus cepat.', projectile: { type: 'piercing' }},
+                {id: 21, name: 'Wyvern', cost: 60000, desc: 'Tembakan menyebar 5x.', projectile: { type: 'spread', count: 5 }},
+                {id: 22, name: 'Colossus', cost: 75000, desc: 'Tembakan ganda super.', projectile: { type: 'double' }},
+                {id: 23, name: 'Helios', cost: 90000, desc: 'Tembakan penembus super.', projectile: { type: 'piercing' }},
+                {id: 24, name: 'Spectre', cost: 110000, desc: 'Tembakan beruntun 5x cepat.', projectile: { type: 'burst', count: 5 }},
+                {id: 25, name: 'Paladin', cost: 140000, desc: 'Tembakan menyebar 5x. Superior.', projectile: { type: 'spread', count: 5 }},
+                {id: 26, name: 'Archon', cost: 180000, desc: 'Tembakan penembus kilat.', projectile: { type: 'piercing' }},
+                {id: 27, name: 'Star-Eater', cost: 250000, desc: 'Tembakan menyebar 5x masif.', projectile: { type: 'spread', count: 5 }},
+                {id: 28, name: 'Hypersonic', cost: 320000, desc: 'Tembakan beruntun 7x.', projectile: { type: 'burst', count: 7 }},
+                {id: 29, name: 'Zenith', cost: 500000, desc: 'Tembakan menyebar 7x. Sempurna.', projectile: { type: 'spread', count: 7 }},
+                {id: 30, name: 'Celestial', cost: 750000, desc: 'Tembakan penembus pamungkas.', projectile: { type: 'piercing' }},
+                {id: 31, name: 'Cosmic Singularity', cost: 1000000, desc: 'Menembakkan badai proyektil.', projectile: { type: 'spread', count: 9 }},
+                {id: 32, name: 'Nebula', cost: 1250000, desc: 'Tembakan menyebar plasma.', projectile: { type: 'spread', count: 5 }},
+                {id: 33, name: 'Quasar', cost: 1500000, desc: 'Semburan energi terfokus.', projectile: { type: 'piercing' }},
+                {id: 34, name: 'Pulsar', cost: 1800000, desc: 'Tembakan beruntun energi denyut.', projectile: { type: 'burst', count: 5 }},
+                {id: 35, name: 'Supernova', cost: 2200000, desc: 'Ledakan proyektil area luas.', projectile: { type: 'spread', count: 9 }},
+                {id: 36, name: 'Voidreaver', cost: 2700000, desc: 'Tembakan penembus dimensi.', projectile: { type: 'piercing' }},
+                {id: 37, name: 'Seraphim', cost: 3300000, desc: 'Menembakkan rentetan misil suci.', projectile: { type: 'burst', count: 7 }},
+                {id: 38, name: 'Behemoth', cost: 4000000, desc: 'Kuat namun lambat, tembakan meriam plasma ganda.', projectile: { type: 'double' }},
+                {id: 39, name: 'Chimera', cost: 4800000, desc: 'Menggabungkan tembakan menyebar dan beruntun.', projectile: { type: 'spread', count: 3 }},
+                {id: 40, name: 'Dragonfyre', cost: 5700000, desc: 'Menyemburkan api kosmik terus-menerus.', projectile: { type: 'standard' }},
+                {id: 41, name: 'Eclipse', cost: 6800000, desc: 'Menembakkan proyektil kegelapan yang melacak musuh.', projectile: { type: 'standard' }},
+                {id: 42, name: 'Galeforce', cost: 8000000, desc: 'Tembakan beruntun super cepat, mengoyak lawan.', projectile: { type: 'burst', count: 9 }},
+                {id: 43, name: 'Aetherwing', cost: 10000000, desc: 'Tembakan menyebar 9x yang menembus.', projectile: { type: 'spread', count: 9, piercing: true }},
+                {id: 44, name: 'Chronomancer', cost: 12500000, desc: 'Proyektil yang dapat memanipulasi waktu.', projectile: { type: 'standard' }},
+                {id: 45, name: 'Dreadnought', cost: 15000000, desc: 'Benteng terbang dengan persenjataan berat.', projectile: { type: 'double' }},
+                {id: 46, name: 'Excalibur', cost: 18000000, desc: 'Menembakkan satu bilah energi yang sangat kuat.', projectile: { type: 'piercing' }},
+                {id: 47, name: 'Fenrir', cost: 22000000, desc: 'Sangat lincah dengan tembakan beruntun yang ganas.', projectile: { type: 'burst', count: 5 }},
+                {id: 48, name: 'Genesis', cost: 27000000, desc: 'Menciptakan ledakan kecil di setiap tembakan.', projectile: { type: 'standard' }},
+                {id: 49, name: 'Hyperion', cost: 33000000, desc: 'Meriam surya yang membutuhkan waktu untuk mengisi daya.', projectile: { type: 'piercing' }},
+                {id: 50, name: 'Icarus', cost: 40000000, desc: 'Terlalu cepat, menembakkan laser dari sayapnya.', projectile: { type: 'double' }},
+                {id: 51, name: 'Juggernaut', cost: 50000000, desc: 'Tidak bisa dihentikan, menembus semua rintangan.', projectile: { type: 'piercing' }},
+                {id: 52, name: 'Karma', cost: 75000000, desc: 'Setiap tembakan yang kena akan kembali lebih kuat.', projectile: { type: 'standard' }},
+            ];
             baseShips.forEach((ship, index) => {
-                SPACESHIPS.push({ ...ship, stats: { health: 100 + (index * 30), maxSpeed: 18 + (index * 0.9), fuel: 250 + (index * 25), accel: 0.18 + (index * 0.009), turn: 0.035 + (index * 0.0006), laserSpeed: 60 + (index * 3.5), refuelRate: 2 + (index * 0.1), projectile: { type: 'standard' }}});
+                const projectile = ship.projectile || { type: 'standard' };
+                SPACESHIPS.push({ ...ship, stats: { health: 100 + (index * 30), maxSpeed: 18 + (index * 0.9), fuel: 250 + (index * 25), accel: 0.18 + (index * 0.009), turn: 0.035 + (index * 0.0006), laserSpeed: 60 + (index * 3.5), refuelRate: 2 + (index * 0.1), projectile: projectile }});
             });
         }
         function setupJoystick() { /* Logika joystick dari kode lama */ }
