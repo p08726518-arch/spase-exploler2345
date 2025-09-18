@@ -953,7 +953,52 @@
                     shipGroup.add(engineGlow);
                     break;
                 }
-                default: { // ID 48+: Exotic
+                case 8: { // ID 48-53: Advanced High-Tech (Genesis, Hyperion, Icarus, Juggernaut, Karma)
+                    const mainColor = new THREE.Color(0xffffff); // Warna putih bersih
+                    const accentColor = new THREE.Color(0x00ffff); // Aksen cyan
+                    const advBodyMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.95, roughness: 0.2 });
+                    const advAccentMat = new THREE.MeshStandardMaterial({ color: accentColor, metalness: 0.8, roughness: 0.4, emissive: accentColor, emissiveIntensity: 0.5 });
+
+                    const bodyLength = 7 + (id % 6) * 0.3;
+                    const bodyWidth = 1.8;
+
+                    // Badan utama yang ramping
+                    const mainBody = new THREE.Mesh(new THREE.BoxGeometry(bodyWidth, 0.8, bodyLength), advBodyMat);
+                    shipGroup.add(mainBody);
+
+                    // Kokpit terintegrasi
+                    const cockpitGeo = new THREE.ConeGeometry(bodyWidth / 2, 2, 4);
+                    const cockpit = new THREE.Mesh(cockpitGeo, cockpitMaterial);
+                    cockpit.rotation.x = Math.PI / 2;
+                    cockpit.position.set(0, 0.2, bodyLength / 2);
+                    shipGroup.add(cockpit);
+
+                    // Sayap menyapu ke depan (Forward-swept wings)
+                    const wingSpan = 6 + (id % 6) * 0.4;
+                    const wingShape = new THREE.Shape();
+                    wingShape.moveTo(0, 0); wingShape.lineTo(-wingSpan, 1.5); wingShape.lineTo(-wingSpan, 0.5); wingShape.lineTo(0, -1.5); wingShape.lineTo(0, 0);
+                    const wingExtrudeSettings = { depth: 0.1, bevelEnabled: false };
+                    const wingGeo = new THREE.ExtrudeGeometry(wingShape, wingExtrudeSettings);
+                    wingGeo.rotateX(-Math.PI / 2);
+
+                    const rightWing = new THREE.Mesh(wingGeo, advAccentMat);
+                    rightWing.position.set(bodyWidth / 2, 0, 1);
+                    shipGroup.add(rightWing);
+
+                    const leftWing = new THREE.Mesh(wingGeo.clone(), advAccentMat);
+                    leftWing.scale.x = -1;
+                    leftWing.position.set(-bodyWidth / 2, 0, 1);
+                    shipGroup.add(leftWing);
+
+                    // Mesin dengan glow terintegrasi
+                    const engineGlow = new THREE.Mesh(new THREE.BoxGeometry(bodyWidth * 0.8, 0.2, 0.2), engineGlowMaterial);
+                    engineGlow.material.color.set(accentColor); // Sesuaikan warna glow dengan aksen
+                    engineGlow.position.set(0, 0, -bodyLength / 2 - 0.1);
+                    shipGroup.add(engineGlow);
+
+                    break;
+                }
+                default: { // ID 54+: Exotic
                     const mainColor = new THREE.Color().setHSL((id % 18) / 18, 0.7, 0.5);
                     const accentColor = new THREE.Color().setHSL(((id + 5) % 18) / 18, 0.7, 0.6);
                     const exoticBodyMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.5, roughness: 0.8 });
