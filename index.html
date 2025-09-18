@@ -213,6 +213,7 @@
         <p>Tugas: Capai target, hancurkan asteroid!</p>
         <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
         <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>
+        <p><b>Kamera (C):</b> <span id="camera-mode-info">Belakang</span></p>
         <p><b>Klik Kiri:</b> Fokus Target Sword Sensor</p>
         <p id="distance-info">Jarak ke Target: ...</p>
     </div>
@@ -302,6 +303,8 @@
         let focusedTarget = null;
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
+        let cameraMode = 0; // 0: Belakang, 1: Depan, 2: Kokpit
+        const cameraModes = ['Belakang', 'Depan', 'Kokpit'];
 
         // Sistem Health, Bahan Bakar, dll
         let maxHealth = 100, currentHealth = maxHealth;
@@ -906,6 +909,29 @@
         const keyboard = {};
         window.addEventListener('keydown', (e) => { keyboard[e.key.toLowerCase()] = true; handleAccessoryKeyPress(e.key); });
         window.addEventListener('keyup', (e) => { keyboard[e.key.toLowerCase()] = false; });
+        window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'c') switchCameraMode(); });
+
+        function switchCameraMode() {
+            if (!isGameStarted || isGameOver) return;
+            cameraMode = (cameraMode + 1) % 3;
+            const cameraModeInfo = document.getElementById('camera-mode-info');
+            cameraModeInfo.innerText = cameraModes[cameraMode];
+
+            // Hapus kamera dari parent sebelumnya untuk menghindari duplikasi
+            if (camera.parent) {
+                camera.parent.remove(camera);
+            }
+
+            if (cameraMode === 2) { // Mode Kokpit
+                shipGroup.add(camera);
+                // Atur posisi & rotasi lokal kamera relatif terhadap pesawat
+                camera.position.set(0, 0.5, 1.5); 
+                camera.rotation.set(0, Math.PI, 0); // Kamera melihat ke depan dari dalam pesawat (rotasi 180 derajat di sumbu Y)
+            } else { // Mode Belakang atau Depan
+                scene.add(camera); // Tambahkan kamera kembali ke scene utama
+            }
+        }
+
         window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); fireProjectile(); }});
         
         function onMouseDown(event) {
@@ -1499,10 +1525,19 @@
                 updateMinimap();
                 updateSwordSensor();
                 updateDistanceInfo();
-                const relativeCameraOffset = new THREE.Vector3(0, 5 + speed, 20 + speed);
-                const cameraOffset = relativeCameraOffset.applyMatrix4(shipGroup.matrixWorld);
-                camera.position.lerp(cameraOffset, 0.1);
-                camera.lookAt(shipGroup.position);
+
+                if (cameraMode !== 2) { // Mode Belakang dan Depan
+                    let relativeCameraOffset;
+                    if (cameraMode === 0) { // Mode Belakang
+                        relativeCameraOffset = new THREE.Vector3(0, 5, -20 - (speed / 2));
+                    } else { // Mode Depan
+                        relativeCameraOffset = new THREE.Vector3(0, 4, 25);
+                    }
+                    const cameraOffset = relativeCameraOffset.applyMatrix4(shipGroup.matrixWorld);
+                    camera.position.lerp(cameraOffset, 0.1);
+                    camera.lookAt(shipGroup.position);
+                }
+                // Untuk mode 2 (kokpit), tidak ada logic di sini karena kamera sudah menjadi child dari shipGroup.
             }
             renderer.render(scene, camera);
         }
