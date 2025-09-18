@@ -348,7 +348,7 @@
         let isGameStarted = false, isPaused = false, isGameOver = false, score = 0, currentLevel = 'easy', alienBoss = null, bossLasers = [];
         let minimapCanvas, minimapCtx, minimapScale = 40;
         let shipGroup, starField, denseStarField, shipSpotlight, target; // Target object
-        const asteroids = [], lasers = [], aliens = [], alienLasers = [], shipWrecks = [], detectionLines = [];
+        const asteroids = [], lasers = [], aliens = [], alienLasers = [], shipWrecks = [], detectionLines = [], friends = [];
         let focusedTarget = null;
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -380,6 +380,7 @@
                 fuelTank: { level: 0 },
                 healthBooster: { level: 0 },
                 pointBooster: { level: 0 },
+                friends: { level: 0 },
             }
         };
         // UI Elements
@@ -391,12 +392,13 @@
         const ACCESSORIES = {
             shield: { id: 'shield', name: 'Shield', baseCost: 70000, maxLevel: 24, desc: (lvl) => `Aktifkan perisai pelindung selama ${14 + lvl} detik. Cooldown: ${60 - lvl} detik.`},
             speed: { id: 'speed', name: 'Speed Boost', baseCost: 28943, maxLevel: 24, desc: (lvl) => `Tingkatkan kecepatan puncak selama ${11 + lvl} detik. Cooldown: ${50 - lvl} detik.`},
-            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 32, desc: (lvl) => `Mendeteksi & merusak objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl}.`},
+            sword: { id: 'sword', name: 'Sword Sensor', baseCost: 5000, maxLevel: 69, desc: (lvl) => `Mendeteksi & merusak hingga 3 objek dalam radius ${200 + lvl * 20} unit. Kerusakan: ${3 + lvl * 5}.`},
             flashlight: { id: 'flashlight', name: 'Senter', baseCost: 1, maxLevel: 24, desc: (lvl) => `Mengurangi efek penglihatan redup dari meteor sebesar ${10 + lvl * 3}%.`},
             warmth: { id: 'warmth', name: 'Pemanas', baseCost: 99124, maxLevel: 24, desc: (lvl) => `Memberi ketahanan dari efek beku selama ${60 + lvl * 5} detik. Cooldown: ${120 - lvl*2} detik.`},
             fuelTank: { id: 'fuelTank', name: 'Tangki Bahan Bakar', baseCost: 15000, maxLevel: 34, desc: (lvl) => `Menambah kapasitas bahan bakar maksimal sebesar ${lvl * 25} unit.`},
             healthBooster: { id: 'healthBooster', name: 'Struktur Diperkuat', baseCost: 25000, maxLevel: 45, desc: (lvl) => `Menambah health maksimal permanen sebesar ${lvl * 4} poin.`},
-            pointBooster: { id: 'pointBooster', name: 'Poin Booster', baseCost: 150000, maxLevel: 45, desc: (lvl) => `Meningkatkan perolehan poin dari semua sumber sebesar ${lvl * 40}% secara permanen.`}
+            pointBooster: { id: 'pointBooster', name: 'Poin Booster', baseCost: 150000, maxLevel: 45, desc: (lvl) => `Meningkatkan perolehan poin dari semua sumber sebesar ${lvl * 40}% secara permanen.`},
+            friends: { id: 'friends', name: 'Friends', baseCost: 700000, maxLevel: 2, desc: (lvl) => `Beli drone pendamping. Drone memiliki Sword Sensor 2x lebih kuat dari milikmu. Drone: ${lvl}/2.`}
         };
         const CRATES = [
             { id: 'starter', name: 'Starter Crate', cost: 196000, ships: [1, 2, 3, 4, 5, 6] },
@@ -498,6 +500,10 @@
         }
         function startGame() {
             isGameStarted = true;
+            // Hapus teman dari game sebelumnya
+            friends.forEach(f => scene.remove(f.shipGroup));
+            friends.length = 0;
+
             document.getElementById('hangar-screen').style.display = 'none';
             const shipData = SPACESHIPS.find(s => s.id === playerData.selectedShipId) || SPACESHIPS[0];
             setupShipStats(shipData);
@@ -515,6 +521,11 @@
             setInterval(() => { if(isGameStarted && !isGameOver) triggerAlienInvasion(); }, settings.alienInvasionInterval);
             setInterval(() => { if(isGameStarted && !isGameOver && !alienBoss) triggerBossInvasion(); }, settings.bossInvasionInterval);
             setInterval(() => { if(isGameStarted && !isGameOver) triggerFrozenMeteorEvent(); }, settings.frozenMeteorInterval);
+            
+            // Buat teman berdasarkan level
+            for (let i = 0; i < playerData.accessories.friends.level; i++) {
+                createFriend(i);
+            }
             animate();
         }
         // --- UI & NAVIGASI MENU ---
@@ -596,6 +607,8 @@
                     else if (level === 1) cost = 2;
                     else if (level === 2) cost = 3;
                     else cost = 5000000 * Math.pow(2, level - 3);
+                } else if (key === 'friends') {
+                    cost = acc.baseCost;
                 } else {
                     cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
                 }
@@ -631,6 +644,8 @@
                 const level = data.level;
                 if (level === 0) cost = 1; else if (level === 1) cost = 2; else if (level === 2) cost = 3;
                 else cost = 5000000 * Math.pow(2, level - 3);
+            } else if (key === 'friends') {
+                cost = acc.baseCost;
             } else {
                 cost = Math.floor(acc.baseCost * Math.pow(1.8, data.level));
             }
@@ -733,7 +748,7 @@
 
             // --- GENERASI PROSEDURAL BERDASARKAN ID ---
             const modelType = Math.floor(id / 6);
-
+            
             switch (modelType) {
                 case 0: { // ID 0-5: Scout
                     const bodyLength = 3.5 + (id % 6) * 0.15;
@@ -924,26 +939,49 @@
                     shipGroup.add(glow1);
                     break;
                 }
-                case 6: { // ID 36-41: Bio-Organic
-                    const bioMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x228B22), metalness: 0.1, roughness: 0.8 });
-                    const points = [];
-                    for (let i = 0; i < 10; i++) { points.push(new THREE.Vector2(Math.sin(i * 0.2) * 1.5 + 0.5, (i - 5) * 0.8)); }
-                    const bodyGeo = new THREE.LatheGeometry(points, 12);
-                    const body = new THREE.Mesh(bodyGeo, bioMat);
-                    body.rotation.x = Math.PI / 2;
-                    shipGroup.add(body);
-                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), cockpitMaterial);
-                    cockpit.position.set(0, 0.5, 3.5);
+                case 6: { // ID 36-41: Marauder/Reaver (Desain Baru)
+                    const reaverBodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.4 });
+                    const reaverAccentMat = new THREE.MeshStandardMaterial({ color: 0x8B0000, metalness: 0.7, roughness: 0.6 }); // Merah Gelap
+                    const reaverGlowMat = new THREE.MeshBasicMaterial({ color: 0xff4500, toneMapped: false }); // Cahaya Oranye-Merah
+
+                    const bodyLength = 7 + (id % 6) * 0.2;
+                    const mainBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, bodyLength), reaverBodyMat);
+                    shipGroup.add(mainBody);
+
+                    // Kokpit tajam
+                    const cockpit = new THREE.Mesh(new THREE.ConeGeometry(0.6, 2.5, 4), cockpitMaterial);
+                    cockpit.rotation.x = Math.PI / 2;
+                    cockpit.position.set(0, 0.3, bodyLength / 2 - 0.5);
                     shipGroup.add(cockpit);
-                    const finShape = new THREE.Shape();
-                    finShape.moveTo(0, 0); finShape.bezierCurveTo(2, 1, 3, -1, 0, -0.5);
-                    const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.2, bevelEnabled: false });
-                    const fin = new THREE.Mesh(finGeo, bioMat);
-                    fin.position.set(0.5, 0, 0);
-                    shipGroup.add(fin);
-                    const engine = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), bioMat);
-                    engine.position.set(0, 0, -4.5);
-                    shipGroup.add(engine);
+
+                    // Sayap agresif menyapu ke belakang
+                    const wingSpan = 5 + (id % 6) * 0.3;
+                    const wingShape = new THREE.Shape();
+                    wingShape.moveTo(0, 0); wingShape.lineTo(wingSpan, 1.5); wingShape.lineTo(wingSpan - 1, 0); wingShape.lineTo(0, -2.5); wingShape.lineTo(0, 0);
+                    const wingExtrudeSettings = { depth: 0.15, bevelEnabled: false };
+                    const wingGeo = new THREE.ExtrudeGeometry(wingShape, wingExtrudeSettings);
+                    wingGeo.rotateX(-Math.PI / 2);
+
+                    const rightWing = new THREE.Mesh(wingGeo, reaverAccentMat);
+                    rightWing.position.set(0.75, 0, -1);
+                    shipGroup.add(rightWing);
+
+                    const leftWing = new THREE.Mesh(wingGeo.clone(), reaverAccentMat);
+                    leftWing.scale.x = -1;
+                    leftWing.position.set(-0.75, 0, -1);
+                    shipGroup.add(leftWing);
+
+                    // Mesin kotak ganda
+                    const engineGeo = new THREE.BoxGeometry(0.8, 0.8, 2.5);
+                    const enginePositions = [new THREE.Vector3(1.2, 0, -bodyLength / 2), new THREE.Vector3(-1.2, 0, -bodyLength / 2)];
+                    enginePositions.forEach(pos => {
+                        const engine = new THREE.Mesh(engineGeo, reaverBodyMat);
+                        engine.position.copy(pos);
+                        shipGroup.add(engine);
+                        const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), reaverGlowMat);
+                        glow.position.set(pos.x, pos.y, pos.z - 1.26);
+                        shipGroup.add(glow);
+                    });
                     break;
                 }
                 case 7: { // ID 42-47: Stealth
@@ -1065,6 +1103,45 @@
                 shipGroup.add(shipSpotlight.target);
             }
             camera.position.set(0, 3, 10);
+        }
+        function createFriend(index) {
+            const friendGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.3 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: 0x00aaff, metalness: 0.8, roughness: 0.5 });
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, toneMapped: false });
+
+            const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6), bodyMat);
+            friendGroup.add(body);
+
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0); wingShape.lineTo(3, 0.5); wingShape.lineTo(3, -0.5); wingShape.lineTo(0, 0);
+            const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.1, bevelEnabled: false });
+
+            const rightWing = new THREE.Mesh(wingGeo, accentMat);
+            rightWing.position.set(1, 0, 0);
+            friendGroup.add(rightWing);
+
+            const leftWing = new THREE.Mesh(wingGeo.clone(), accentMat);
+            leftWing.scale.x = -1;
+            leftWing.position.set(-1, 0, 0);
+            friendGroup.add(leftWing);
+            
+            const glow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), glowMat);
+            glow.position.z = -1.51;
+            friendGroup.add(glow);
+
+            friendGroup.scale.set(0.8, 0.8, 0.8);
+            
+            // Tentukan posisi offset berdasarkan index (0: kiri, 1: kanan)
+            const offset = new THREE.Vector3((index === 0 ? -15 : 15), 0, -5);
+
+            const friendObject = {
+                shipGroup: friendGroup,
+                offset: offset,
+                detectionLines: []
+            };
+            friends.push(friendObject);
+            scene.add(friendGroup);
         }
         function createScenery() {
             const starVertices1 = [];
@@ -1258,65 +1335,146 @@
             if (swordLevel === 0 || !shipGroup) return;
         
             const detectionRadius = 200 + swordLevel * 20;
-            const swordDamage = 3 + swordLevel;
+            const swordDamage = 3 + swordLevel * 5;
             const now = Date.now();
             const swordCooldown = 1000;
             const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
             
-            // --- Penargetan Asteroid ---
-            let targetsToDamage = [];
+            let allTargets = [];
+
+            // --- Kumpulkan semua target potensial ---
             if (focusedTarget && focusedTarget.health > 0 && shipGroup.position.distanceTo(focusedTarget.position) < detectionRadius) {
-                 targetsToDamage.push(focusedTarget);
-            } else {
-                if(focusedTarget) focusedTarget = null; 
-                asteroids.forEach(asteroid => {
-                    if (asteroid.isTargetable && shipGroup.position.distanceTo(asteroid.position) < detectionRadius) {
-                        targetsToDamage.push(asteroid);
-                    }
-                });
+                if (!allTargets.includes(focusedTarget)) allTargets.push(focusedTarget);
+            } else if(focusedTarget) {
+                focusedTarget = null; 
             }
-        
-            targetsToDamage.forEach(target => {
-                const points = [shipGroup.position.clone(), target.position.clone()]; const geometry = new THREE.BufferGeometry().setFromPoints(points); const line = new THREE.Line(geometry, material); detectionLines.push(line); scene.add(line);
-                if (!target.lastSwordHitTime || now > target.lastSwordHitTime + swordCooldown) { target.lastSwordHitTime = now; damageAsteroid(target, swordDamage); }
+
+            asteroids.forEach(asteroid => {
+                if (asteroid.isTargetable && shipGroup.position.distanceTo(asteroid.position) < detectionRadius) {
+                    if (!allTargets.includes(asteroid)) allTargets.push(asteroid);
+                }
             });
 
-            // --- Penargetan Alien oleh Sword Sensor ---
-            for (let i = aliens.length - 1; i >= 0; i--) {
-                const alien = aliens[i];
+            aliens.forEach(alien => {
                 if (shipGroup.position.distanceTo(alien.position) < detectionRadius) {
-                    const points = [shipGroup.position.clone(), alien.position.clone()]; const geometry = new THREE.BufferGeometry().setFromPoints(points); const line = new THREE.Line(geometry, material); detectionLines.push(line); scene.add(line);
-                    if (!alien.lastSwordHitTime || now > alien.lastSwordHitTime + swordCooldown) {
-                        alien.lastSwordHitTime = now;
-                        alien.health -= swordDamage;
-                        if (alien.health <= 0) {
-                            const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
-                            playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
-                            scene.remove(alien); aliens.splice(i, 1);
-                        }
-                    }
+                    if (!allTargets.includes(alien)) allTargets.push(alien);
                 }
+            });
+
+            if (alienBoss && shipGroup.position.distanceTo(alienBoss.position) < detectionRadius) {
+                if (!allTargets.includes(alienBoss)) allTargets.push(alienBoss);
             }
 
-            // --- Penargetan Alien Boss oleh Sword Sensor ---
-            if (alienBoss && shipGroup.position.distanceTo(alienBoss.position) < detectionRadius) {
-                const points = [shipGroup.position.clone(), alienBoss.position.clone()];
+            // Urutkan target berdasarkan jarak terdekat
+            allTargets.sort((a, b) => shipGroup.position.distanceTo(a.position) - shipGroup.position.distanceTo(b.position));
+
+            // Ambil hanya 3 target terdekat
+            const finalTargets = allTargets.slice(0, 3);
+
+            // --- Beri kerusakan pada target yang dipilih ---
+            finalTargets.forEach(target => {
+                const points = [shipGroup.position.clone(), target.position.clone()];
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
                 const line = new THREE.Line(geometry, material);
                 detectionLines.push(line);
                 scene.add(line);
-                if (!alienBoss.lastSwordHitTime || now > alienBoss.lastSwordHitTime + swordCooldown) {
-                    alienBoss.lastSwordHitTime = now;
-                    alienBoss.health -= swordDamage;
-                    if (alienBoss.health <= 0) {
-                        const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
-                        playerData.points += Math.round(5000 * pointMultiplier);
-                        savePlayerData();
-                        scene.remove(alienBoss);
-                        alienBoss = null;
+
+                if (!target.lastSwordHitTime || now > target.lastSwordHitTime + swordCooldown) {
+                    target.lastSwordHitTime = now;
+
+                    if (asteroids.includes(target)) {
+                        damageAsteroid(target, swordDamage);
+                    } else if (aliens.includes(target)) {
+                        target.health -= swordDamage;
+                        if (target.health <= 0) {
+                            const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
+                            playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
+                            scene.remove(target);
+                            const index = aliens.indexOf(target);
+                            if (index > -1) aliens.splice(index, 1);
+                        }
+                    } else if (target === alienBoss) {
+                        target.health -= swordDamage;
+                        if (target.health <= 0) {
+                            const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
+                            playerData.points += Math.round(5000 * pointMultiplier);
+                            savePlayerData();
+                            scene.remove(target);
+                            alienBoss = null;
+                        }
                     }
                 }
-            }
+            });
+        }
+        function updateFriends() {
+            if (!shipGroup || friends.length === 0) return;
+
+            friends.forEach(friend => {
+                // Update Posisi & Rotasi
+                const targetPosition = friend.offset.clone().applyMatrix4(shipGroup.matrixWorld);
+                friend.shipGroup.position.lerp(targetPosition, 0.08);
+                friend.shipGroup.quaternion.slerp(shipGroup.quaternion, 0.08);
+
+                // Update Logika Sword Sensor untuk teman
+                friend.detectionLines.forEach(line => scene.remove(line));
+                friend.detectionLines.length = 0;
+
+                const swordLevel = playerData.accessories.sword.level;
+                if (swordLevel === 0) return; // Sensor teman bergantung pada sensor pemain
+
+                const detectionRadius = 200 + swordLevel * 20;
+                const swordDamage = (3 + swordLevel * 5) * 2; // Kerusakan 2x lebih kuat
+                const now = Date.now();
+                const swordCooldown = 1000;
+                const material = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.5 }); // Garis biru untuk teman
+
+                let allTargets = [];
+                
+                // Teman memindai target dari posisinya sendiri
+                asteroids.forEach(asteroid => {
+                    if (asteroid.isTargetable && friend.shipGroup.position.distanceTo(asteroid.position) < detectionRadius) {
+                        if (!allTargets.includes(asteroid)) allTargets.push(asteroid);
+                    }
+                });
+                aliens.forEach(alien => {
+                    if (friend.shipGroup.position.distanceTo(alien.position) < detectionRadius) {
+                        if (!allTargets.includes(alien)) allTargets.push(alien);
+                    }
+                });
+                if (alienBoss && friend.shipGroup.position.distanceTo(alienBoss.position) < detectionRadius) {
+                    if (!allTargets.includes(alienBoss)) allTargets.push(alienBoss);
+                }
+
+                allTargets.sort((a, b) => friend.shipGroup.position.distanceTo(a.position) - friend.shipGroup.position.distanceTo(b.position));
+                const finalTargets = allTargets.slice(0, 3); // Batas target sama seperti pemain
+
+                finalTargets.forEach(target => {
+                    const points = [friend.shipGroup.position.clone(), target.position.clone()];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, material);
+                    friend.detectionLines.push(line);
+                    scene.add(line);
+
+                    if (!target.lastFriendHitTime || now > target.lastFriendHitTime + swordCooldown) {
+                        target.lastFriendHitTime = now; // Timestamp terpisah untuk teman
+
+                        if (asteroids.includes(target)) {
+                            damageAsteroid(target, swordDamage);
+                        } else if (aliens.includes(target)) {
+                            target.health -= swordDamage;
+                            if (target.health <= 0) {
+                                const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
+                                playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
+                                scene.remove(target);
+                                const index = aliens.indexOf(target);
+                                if (index > -1) aliens.splice(index, 1);
+                            }
+                        } else if (target === alienBoss) {
+                            target.health -= swordDamage;
+                        }
+                    }
+                });
+            });
         }
         // --- FUNGSI ALIEN & METEOR BEKU ---
         function createAlienShip(position) {
@@ -1722,6 +1880,7 @@
                 updateFreezeStatus(deltaTime);
                 updateMinimap();
                 updateSwordSensor();
+                updateFriends();
                 updateDistanceInfo();
 
                 if (cameraMode !== 2) { // Mode Belakang dan Depan
@@ -1812,6 +1971,18 @@
                     minimapCtx.beginPath(); minimapCtx.arc(mapX, mapY, 5, 0, Math.PI * 2); minimapCtx.fill();
                 }
             }
+
+            // Gambar teman
+            minimapCtx.fillStyle = '#00ffff'; // Cyan terang
+            friends.forEach(friend => {
+                const dx = (friend.shipGroup.position.x - shipGroup.position.x) / minimapScale;
+                const dy = (friend.shipGroup.position.z - shipGroup.position.z) / minimapScale;
+                const mapX = mapCenter + dx;
+                const mapY = mapCenter + dy;
+                if (Math.abs(dx) < mapCenter && Math.abs(dy) < mapCenter) {
+                    minimapCtx.fillRect(mapX - 1, mapY - 1, 3, 3); // Kotak yang sedikit lebih besar
+                }
+            });
         }
         function fireProjectile() {
             if (isFrozen || isPaused || isGameOver || !shipGroup) return;
