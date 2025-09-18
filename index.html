@@ -296,7 +296,6 @@
                 <button class="nav-tab active" onclick="showTab('hangar-content')">HANGGAR</button>
                 <button class="nav-tab" onclick="showTab('shop-content')">AKSESORIS</button>
                 <button class="nav-tab" onclick="showTab('crate-content')">CRATE</button>
-                <button class="nav-tab" onclick="showTab('settings-content')">PENGATURAN</button>
             </div>
             <div id="hangar-content">
                 <h2>HANGGAR PESAWAT</h2>
@@ -312,11 +311,6 @@
                 <h2>CRATE PESAWAT</h2>
                 <p>Buka crate untuk kesempatan mendapatkan pesawat langka!</p>
                 <div id="crate-grid" class="grid-container"></div>
-            </div>
-            <div id="settings-content" style="display:none;">
-                <h2>PENGATURAN</h2>
-                <p>Ubah pengaturan grafis. Perubahan akan diterapkan saat game dimulai.</p>
-                <div id="settings-grid" class="grid-container" style="grid-template-columns: 1fr;"></div>
             </div>
         </div>
         <button onclick="showMainMenu()" style="position: fixed; bottom: 20px; left: 20px; min-width: 150px;">Kembali ke Menu</button>
@@ -387,9 +381,6 @@
                 pointBooster: { level: 0 },
                 friends: { level: 0 },
             },
-            settings: {
-                realisticMode: false
-            }
         };
         // UI Elements
         const pointsInfo = document.getElementById('points');
@@ -478,7 +469,6 @@
                 const parsedData = JSON.parse(savedData);
                 playerData = { ...defaultPlayerData, ...parsedData };
                 playerData.accessories = { ...defaultPlayerData.accessories, ...parsedData.accessories };
-                playerData.settings = { ...defaultPlayerData.settings, ...parsedData.settings };
             } else {
                 playerData = JSON.parse(JSON.stringify(defaultPlayerData));
             }
@@ -551,15 +541,9 @@
             currentMissionIndex = 0;
             const firstMission = MISSIONS[currentMissionIndex];
             document.getElementById('mission-title').innerText = firstMission.name;
-            let targetMaterial;
-            const isRealistic = playerData.settings && playerData.settings.realisticMode;
-            if (isRealistic) {
-                const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
-                const texture = textureLoader.load(textureUrl);
-                targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
-            } else {
-                targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
-            }
+            const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
+            const texture = textureLoader.load(textureUrl);
+            const targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
             target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
             target.object.position.z = -firstMission.distance;
             scene.add(target.object);
@@ -583,11 +567,10 @@
             populateShipGrid();
             populateAccessoryGrid();
             populateCrateGrid();
-            populateSettingsGrid();
             showTab('hangar-content');
         }
         function showTab(tabId) {
-            ['hangar-content', 'shop-content', 'crate-content', 'settings-content'].forEach(id => {
+            ['hangar-content', 'shop-content', 'crate-content'].forEach(id => {
                 document.getElementById(id).style.display = 'none';
             });
             document.getElementById(tabId).style.display = 'block';
@@ -743,30 +726,6 @@
             savePlayerData();
             populateCrateGrid();
             document.getElementById('crate-result-screen').style.display = 'flex';
-        }
-        function populateSettingsGrid() {
-            const grid = document.getElementById('settings-grid');
-            grid.innerHTML = '';
-
-            const realisticMode = playerData.settings.realisticMode;
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.style.textAlign = 'left';
-            card.innerHTML = `
-                <h3>Mode Realistis</h3>
-                <p>Mengaktifkan tekstur dan model yang lebih detail untuk asteroid dan objek lain. Mungkin mempengaruhi performa.</p>
-                <p>Status: <b style="color: ${realisticMode ? 'var(--success-color)' : 'var(--danger-color)'}">${realisticMode ? 'AKTIF' : 'NONAKTIF'}</b></p>
-                <button onclick="toggleRealisticMode()">
-                    ${realisticMode ? 'Nonaktifkan' : 'Aktifkan'}
-                </button>
-            `;
-            grid.appendChild(card);
-        }
-        function toggleRealisticMode() {
-            playerData.settings.realisticMode = !playerData.settings.realisticMode;
-            savePlayerData();
-            populateSettingsGrid();
         }
         // --- PEMBUATAN OBJEK & STATS ---
         function setupShipStats(shipData) {
@@ -1235,41 +1194,30 @@
             const difficultyIndex = difficultyLevels.indexOf(currentLevel);
             const healthMultiplier = Math.pow(3, difficultyIndex);
 
-            let asteroidGeometry, asteroidMaterial;
-            const isRealistic = playerData.settings && playerData.settings.realisticMode;
-
-            if (isRealistic) {
-                // Mode Realistis: Geometri tidak beraturan dan material standar
-                asteroidGeometry = new THREE.IcosahedronGeometry(1, 3); // Lebih detail
-                const positionAttribute = asteroidGeometry.getAttribute('position');
-                const tempVertex = new THREE.Vector3();
-                for (let i = 0; i < positionAttribute.count; i++) {
-                    tempVertex.fromBufferAttribute(positionAttribute, i);
-                    const noise = 0.3 * (Math.random() - 0.5);
-                    tempVertex.multiplyScalar(1 + noise);
-                    positionAttribute.setXYZ(i, tempVertex.x, tempVertex.y, tempVertex.z);
-                }
-                asteroidGeometry.computeVertexNormals();
-                // Material dasar untuk di-clone, lebih efisien daripada membuat material baru di setiap loop
-                const asteroidTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
-                const asteroidNormalMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1k_normal.jpg');
-                asteroidMaterial = new THREE.MeshStandardMaterial({ 
-                    map: asteroidTexture, 
-                    normalMap: asteroidNormalMap, // Menambahkan detail permukaan dengan normal map
-                    roughness: 0.9, 
-                    metalness: 0.1 
-                });
-            } else {
-                // Mode Default: Geometri simpel dan flat shading
-                asteroidGeometry = new THREE.IcosahedronGeometry(1, 0); 
-                asteroidMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513, flatShading: true });
+            // Mode Realistis: Geometri tidak beraturan dan material standar
+            let asteroidGeometry = new THREE.IcosahedronGeometry(1, 3); // Lebih detail
+            const positionAttribute = asteroidGeometry.getAttribute('position');
+            const tempVertex = new THREE.Vector3();
+            for (let i = 0; i < positionAttribute.count; i++) {
+                tempVertex.fromBufferAttribute(positionAttribute, i);
+                const noise = 0.3 * (Math.random() - 0.5);
+                tempVertex.multiplyScalar(1 + noise);
+                positionAttribute.setXYZ(i, tempVertex.x, tempVertex.y, tempVertex.z);
             }
+            asteroidGeometry.computeVertexNormals();
+            // Material dasar untuk di-clone, lebih efisien daripada membuat material baru di setiap loop
+            const asteroidTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
+            const asteroidNormalMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1k_normal.jpg');
+            const asteroidMaterial = new THREE.MeshStandardMaterial({ 
+                map: asteroidTexture, 
+                normalMap: asteroidNormalMap, // Menambahkan detail permukaan dengan normal map
+                roughness: 0.9, 
+                metalness: 0.1 
+            });
 
             for (let i = 0; i < count; i++) {
                 const material = asteroidMaterial.clone();
-                if (isRealistic) {
-                    material.color.setHSL(0, 0, Math.random() * 0.4 + 0.2); // Variasi warna abu-abu (0.2 - 0.6)
-                }
+                material.color.setHSL(0, 0, Math.random() * 0.4 + 0.2); // Variasi warna abu-abu (0.2 - 0.6)
                 const asteroid = new THREE.Mesh(asteroidGeometry, material);
                 const zPos = minZ + (Math.random() * distance);
                 asteroid.position.set((Math.random() - 0.5) * rangeX, (Math.random() - 0.5) * rangeY, zPos);
@@ -1589,10 +1537,7 @@
         // --- FUNGSI ALIEN & METEOR BEKU ---
         function createAlienShip(position) {
             const alienGroup = new THREE.Group();
-            const isRealistic = playerData.settings && playerData.settings.realisticMode;
-            const saucerMaterial = isRealistic
-                ? new THREE.MeshStandardMaterial({ color: 0x9400D3, metalness: 0.5, roughness: 0.6 })
-                : new THREE.MeshPhongMaterial({ color: 0x9400D3, flatShading: true });
+            const saucerMaterial = new THREE.MeshStandardMaterial({ color: 0x9400D3, metalness: 0.5, roughness: 0.6 });
             const saucerBodyGeo = new THREE.CylinderGeometry(10, 10, 2, 16);
             const saucerBody = new THREE.Mesh(saucerBodyGeo, saucerMaterial);
             alienGroup.add(saucerBody);
@@ -1689,10 +1634,9 @@
         function createAlienBoss(position) {
             if (alienBoss) return; // Hanya satu bos pada satu waktu
 
-            const isRealistic = playerData.settings && playerData.settings.realisticMode;
             const bossGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5, flatShading: !isRealistic });
-            const cannonMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.4, flatShading: !isRealistic });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5, flatShading: false });
+            const cannonMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.4, flatShading: false });
             const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, toneMapped: false });
 
             // Badan utama
@@ -1963,15 +1907,9 @@
                     scene.remove(target.object);
                     const nextMission = MISSIONS[currentMissionIndex];
                     document.getElementById('mission-title').innerText = nextMission.name;
-                    let targetMaterial;
-                    const isRealistic = playerData.settings && playerData.settings.realisticMode;
-                    if (isRealistic) {
-                        const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
-                        const texture = textureLoader.load(textureUrl);
-                        targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
-                    } else {
-                        targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
-                    }
+                    const textureUrl = PLANET_TEXTURES[currentMissionIndex % PLANET_TEXTURES.length];
+                    const texture = textureLoader.load(textureUrl);
+                    const targetMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
                     target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
                     target.object.position.z = -nextMission.distance;
                     scene.add(target.object);
