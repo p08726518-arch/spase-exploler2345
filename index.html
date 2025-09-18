@@ -319,7 +319,7 @@
                 <div id="settings-grid" class="grid-container" style="grid-template-columns: 1fr;"></div>
             </div>
         </div>
-        <button onclick="showMainMenu()" style="position: absolute; bottom: 20px; left: 20px; min-width: 150px;">Kembali ke Menu</button>
+        <button onclick="showMainMenu()" style="position: fixed; bottom: 20px; left: 20px; min-width: 150px;">Kembali ke Menu</button>
     </div>
     <div id="game-over-screen" class="overlay" style="display: none;">
         <h2>GAME OVER</h2><p id="game-over-reason">Anda menabrak asteroid!</p><button onclick="location.reload()">Coba Lagi</button>
@@ -343,7 +343,7 @@
     <script>
         // Inisialisasi Three.js
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.00005);
+        scene.fog = new THREE.FogExp2(0x000000, 0.00002); // Kepadatan fog dikurangi agar planet terlihat
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50000000); // FOV diperkecil dari 75
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -416,14 +416,24 @@
         ];
         const DUPLICATE_POINTS = 298;
         const PLANET_TEXTURES = [
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter.jpg', // Jupiter
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn.jpg', // Saturn
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/uranus.jpg', // Uranus
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/neptune.jpg', // Neptune
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/pluto_1k_color.jpg', // Fictional rocky
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg', // Fictional red
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/venus_surface.jpg', // Fictional hot
-            'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg', // Fictional moon-like
+            'https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_pluto.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_mars.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg',
+            'https://www.solarsystemscope.com/textures/download/2k_moon.jpg'
+        ];
+        const PLANET_COLORS = [
+            0xd8ca9d, // Jupiter - orangey brown
+            0xe3d9b1, // Saturn - pale yellow
+            0xafdbf5, // Uranus - light blue
+            0x3d5a9d, // Neptune - deep blue
+            0xbfb8a1, // Pluto - brownish grey
+            0xb7410e, // Mars - red
+            0xfd9a36, // Venus Surface - orange
+            0xcccccc, // Moon - grey
         ];
         // --- PENGATURAN KESULITAN ---
         const DIFFICULTY_SETTINGS = {
@@ -561,6 +571,9 @@
                 targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
             }
             target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
+            if (isRealistic) {
+                createAtmosphere(target.object, new THREE.Color(PLANET_COLORS[currentMissionIndex % PLANET_COLORS.length]));
+            }
             target.object.position.z = -firstMission.distance;
             scene.add(target.object);
             createAsteroids(settings.asteroidCount, 0.5, -firstMission.distance, 0);
@@ -1216,6 +1229,22 @@
             friends.push(friendObject);
             scene.add(friendGroup);
         }
+        function createAtmosphere(planetMesh, color = 0x00aaff, scaleFactor = 2.5) {
+            const glowTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/lensflare/lensflare0.png');
+            
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: glowTexture,
+                color: color,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+
+            const sprite = new THREE.Sprite(spriteMaterial);
+            const planetRadius = planetMesh.geometry.parameters.radius;
+            sprite.scale.set(planetRadius * scaleFactor, planetRadius * scaleFactor, 1.0);
+            planetMesh.add(sprite);
+        }
         function createScenery() {
             const starVertices1 = [];
             for (let i = 0; i < 300000; i++) {
@@ -1226,6 +1255,29 @@
             starsGeometry1.setAttribute('position', new THREE.Float32BufferAttribute(starVertices1, 3));
             starField = new THREE.Points(starsGeometry1, new THREE.PointsMaterial({ color: 0xffffff, size: 3.5 }));
             scene.add(starField);
+        }
+        function createScenery() {
+            const isRealistic = playerData.settings && playerData.settings.realisticMode;
+
+            if (isRealistic) {
+                const path = 'https://threejs.org/examples/textures/cube/MilkyWay/';
+                scene.background = new THREE.CubeTextureLoader().load([
+                    path + 'dark-s_px.jpg', path + 'dark-s_nx.jpg',
+                    path + 'dark-s_py.jpg', path + 'dark-s_ny.jpg',
+                    path + 'dark-s_pz.jpg', path + 'dark-s_nz.jpg'
+                ]);
+            } else {
+                // Fallback ke starfield untuk mode default
+                const starVertices1 = [];
+                for (let i = 0; i < 300000; i++) {
+                    const x = (Math.random() - 0.5) * 5000000, y = (Math.random() - 0.5) * 5000000, z = (Math.random() - 0.5) * 5000000;
+                    starVertices1.push(x, y, z);
+                }
+                const starsGeometry1 = new THREE.BufferGeometry();
+                starsGeometry1.setAttribute('position', new THREE.Float32BufferAttribute(starVertices1, 3));
+                starField = new THREE.Points(starsGeometry1, new THREE.PointsMaterial({ color: 0xffffff, size: 3.5 }));
+                scene.add(starField);
+            }
         }
         function createAsteroids(count, speedMultiplier, minZ, maxZ) {
             const distance = Math.abs(maxZ - minZ);
@@ -1250,8 +1302,24 @@
                     positionAttribute.setXYZ(i, tempVertex.x, tempVertex.y, tempVertex.z);
                 }
                 asteroidGeometry.computeVertexNormals();
-                const asteroidTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
-                asteroidMaterial = new THREE.MeshStandardMaterial({ map: asteroidTexture, roughness: 0.9, metalness: 0.1 });
+                // Menambahkan UV set kedua yang diperlukan untuk Ambient Occlusion (AO) map
+                asteroidGeometry.setAttribute('uv2', new THREE.BufferAttribute(asteroidGeometry.attributes.uv.array, 2));
+
+                // Material dasar untuk di-clone, lebih efisien daripada membuat material baru di setiap loop
+                const textureUrl = 'https://cc0-textures.s3.us-east-2.amazonaws.com/Rock037/Rock037_2K_';
+                const asteroidTexture = textureLoader.load(`${textureUrl}Color.jpg`);
+                const asteroidNormalMap = textureLoader.load(`${textureUrl}NormalGL.jpg`);
+                const asteroidRoughnessMap = textureLoader.load(`${textureUrl}Roughness.jpg`);
+                const asteroidAoMap = textureLoader.load(`${textureUrl}AmbientOcclusion.jpg`);
+
+                asteroidMaterial = new THREE.MeshStandardMaterial({ 
+                    map: asteroidTexture, 
+                    normalMap: asteroidNormalMap, // Menambahkan detail permukaan dengan normal map
+                    roughnessMap: asteroidRoughnessMap, // Mengontrol kekasaran permukaan
+                    aoMap: asteroidAoMap, // Menambahkan bayangan pada celah
+                    aoMapIntensity: 1,
+                    metalness: 0.1
+                });
             } else {
                 // Mode Default: Geometri simpel dan flat shading
                 asteroidGeometry = new THREE.IcosahedronGeometry(1, 0); 
@@ -1259,7 +1327,11 @@
             }
 
             for (let i = 0; i < count; i++) {
-                const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+                const material = asteroidMaterial.clone();
+                if (isRealistic) {
+                    material.color.setHSL(0, 0, Math.random() * 0.4 + 0.2); // Variasi warna abu-abu (0.2 - 0.6)
+                }
+                const asteroid = new THREE.Mesh(asteroidGeometry, material);
                 const zPos = minZ + (Math.random() * distance);
                 asteroid.position.set((Math.random() - 0.5) * rangeX, (Math.random() - 0.5) * rangeY, zPos);
                 const scale = Math.random() * 40 + 15;
@@ -1267,6 +1339,11 @@
                 asteroid.velocity = new THREE.Vector3((Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier, (Math.random() - 0.5) * speedMultiplier);
                 asteroid.health = 15 * healthMultiplier;
                 asteroid.isTargetable = true;
+                asteroid.rotationSpeed = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.01,
+                    (Math.random() - 0.5) * 0.01,
+                    (Math.random() - 0.5) * 0.01
+                );
                 asteroids.push(asteroid);
                 scene.add(asteroid);
             }
@@ -1957,6 +2034,9 @@
                         targetMaterial = new THREE.MeshPhongMaterial({ color: 0xE8A763 });
                     }
                     target = { object: new THREE.Mesh(new THREE.SphereGeometry(400, 64, 64), targetMaterial) };
+                    if (isRealistic) {
+                        createAtmosphere(target.object, new THREE.Color(PLANET_COLORS[currentMissionIndex % PLANET_COLORS.length]));
+                    }
                     target.object.position.z = -nextMission.distance;
                     scene.add(target.object);
                     const settings = DIFFICULTY_SETTINGS[currentLevel];
@@ -2017,6 +2097,7 @@
         }
         function updateLasers() {
             for (let i = lasers.length - 1; i >= 0; i--) {
+            for (let i = lasers.length - 1; i >= 0; i--) { //
                 const laser = lasers[i];
                 laser.position.add(laser.velocity);
                 if (laser.position.distanceTo(shipGroup.position) > 3000) {
@@ -2027,7 +2108,17 @@
         }
         function updateScenery() {
             starField.rotation.y += 0.00002;
-            asteroids.forEach(a => { a.position.add(a.velocity); a.rotation.x += 0.005; a.rotation.y += 0.005; });
+            if (starField) starField.rotation.y += 0.00002;
+            asteroids.forEach(a => { 
+                a.position.add(a.velocity); 
+                if (a.rotationSpeed) {
+                    a.rotation.x += a.rotationSpeed.x;
+                    a.rotation.y += a.rotationSpeed.y;
+                    a.rotation.z += a.rotationSpeed.z;
+                } else {
+                    a.rotation.x += 0.005; a.rotation.y += 0.005; 
+                }
+            });
         }
         function updateMinimap() {
             if (!minimapCtx || !shipGroup) return;
