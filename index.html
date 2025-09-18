@@ -714,54 +714,58 @@
             });
 
             // --- GENERASI PROSEDURAL BERDASARKAN ID ---
+            const modelType = Math.floor(id / 6);
 
-            // Tipe Model 1: Pesawat Tempur (ID 0-14)
-            if (id <= 14) {
-                const bodyLength = 4.0 + (id % 5) * 0.2;
-                const wingSpan = 3.5 + (id % 5) * 0.3;
-
-                const mainBodyGeo = new THREE.CylinderGeometry(0.4, 0.7, bodyLength, 8);
-                const mainBody = new THREE.Mesh(mainBodyGeo, bodyMaterial);
-                mainBody.rotation.x = Math.PI / 2;
-                shipGroup.add(mainBody);
-
-                const noseConeGeo = new THREE.ConeGeometry(0.4, 1.5, 8);
-                const noseCone = new THREE.Mesh(noseConeGeo, bodyMaterial);
-                noseCone.position.z = (bodyLength / 2) + 0.75;
-                noseCone.rotation.x = Math.PI / 2;
-                shipGroup.add(noseCone);
-
-                const cockpitGeo = new THREE.SphereGeometry(0.6, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-                const cockpit = new THREE.Mesh(cockpitGeo, cockpitMaterial);
-                cockpit.position.set(0, 0.5, (bodyLength / 2) - 1.0);
-                shipGroup.add(cockpit);
-
-                const wingShape = new THREE.Shape();
-                wingShape.moveTo(0, 0); wingShape.lineTo(0, -1.8); wingShape.lineTo(wingSpan, -1.0); wingShape.lineTo(wingSpan, 0.4); wingShape.lineTo(0, 0);
-                const extrudeSettings = { depth: 0.15, bevelEnabled: false };
-                const wingGeo = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
-                wingGeo.rotateX(-Math.PI / 2);
-
-                const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
-                rightWing.position.set(0.5, 0, 0);
-                shipGroup.add(rightWing);
-                const leftWing = new THREE.Mesh(wingGeo.clone(), wingMaterial);
-                leftWing.scale.x = -1;
-                leftWing.position.set(-0.5, 0, 0);
-                shipGroup.add(leftWing);
-
-                const engineCount = (id % 3 === 0) ? 1 : 2;
-                if (engineCount === 1) {
-                    const engineGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.5, 8);
-                    const engine = new THREE.Mesh(engineGeo, bodyMaterial);
+            switch (modelType) {
+                case 0: { // ID 0-5: Scout
+                    const bodyLength = 3.5 + (id % 6) * 0.15;
+                    const wingSpan = 3.0 + (id % 6) * 0.2;
+                    const mainBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, bodyLength, 6), bodyMaterial);
+                    mainBody.rotation.x = Math.PI / 2;
+                    shipGroup.add(mainBody);
+                    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.0), cockpitMaterial);
+                    cockpit.position.set(0, 0.4, bodyLength / 2 - 0.8);
+                    shipGroup.add(cockpit);
+                    const wings = new THREE.Mesh(new THREE.BoxGeometry(wingSpan, 0.15, 1.2), wingMaterial);
+                    wings.position.z = -0.5;
+                    shipGroup.add(wings);
+                    const engine = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 1.5, 8), bodyMaterial);
                     engine.rotation.x = Math.PI / 2;
                     engine.position.set(0, 0, -bodyLength / 2);
                     shipGroup.add(engine);
-                    const glowGeo = new THREE.CircleGeometry(0.35, 16);
-                    const glow = new THREE.Mesh(glowGeo, engineGlowMaterial);
+                    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), engineGlowMaterial);
                     glow.position.set(0, 0, (-bodyLength / 2) - 0.76);
                     shipGroup.add(glow);
-                } else {
+                    break;
+                }
+                case 1: { // ID 6-11: Interceptor
+                    const bodyLength = 4.0 + (id % 6) * 0.2;
+                    const wingSpan = 3.5 + (id % 6) * 0.3;
+                    const mainBodyGeo = new THREE.CylinderGeometry(0.4, 0.7, bodyLength, 8);
+                    const mainBody = new THREE.Mesh(mainBodyGeo, bodyMaterial);
+                    mainBody.rotation.x = Math.PI / 2;
+                    shipGroup.add(mainBody);
+                    const noseConeGeo = new THREE.ConeGeometry(0.4, 1.5, 8);
+                    const noseCone = new THREE.Mesh(noseConeGeo, bodyMaterial);
+                    noseCone.position.z = (bodyLength / 2) + 0.75;
+                    noseCone.rotation.x = Math.PI / 2;
+                    shipGroup.add(noseCone);
+                    const cockpitGeo = new THREE.SphereGeometry(0.6, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+                    const cockpit = new THREE.Mesh(cockpitGeo, cockpitMaterial);
+                    cockpit.position.set(0, 0.5, (bodyLength / 2) - 1.0);
+                    shipGroup.add(cockpit);
+                    const wingShape = new THREE.Shape();
+                    wingShape.moveTo(0, 0); wingShape.lineTo(0, -1.8); wingShape.lineTo(wingSpan, -1.0); wingShape.lineTo(wingSpan, 0.4); wingShape.lineTo(0, 0);
+                    const extrudeSettings = { depth: 0.15, bevelEnabled: false };
+                    const wingGeo = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
+                    wingGeo.rotateX(-Math.PI / 2);
+                    const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
+                    rightWing.position.set(0.5, 0, 0);
+                    shipGroup.add(rightWing);
+                    const leftWing = new THREE.Mesh(wingGeo.clone(), wingMaterial);
+                    leftWing.scale.x = -1;
+                    leftWing.position.set(-0.5, 0, 0);
+                    shipGroup.add(leftWing);
                     const engineGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.8, 8);
                     const rightEngine = new THREE.Mesh(engineGeo, bodyMaterial);
                     rightEngine.rotation.x = Math.PI / 2;
@@ -778,120 +782,213 @@
                     const leftGlow = new THREE.Mesh(glowGeo, engineGlowMaterial);
                     leftGlow.position.set(-1.2, -0.1, (-bodyLength / 2) - 0.41);
                     shipGroup.add(leftGlow);
+                    break;
                 }
-
-                const finShape = new THREE.Shape();
-                finShape.moveTo(0, 0); finShape.lineTo(0, 1.2); finShape.lineTo(-1.5, 0); finShape.lineTo(0, 0);
-                const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.15, bevelEnabled: false });
-                const fin = new THREE.Mesh(finGeo, wingMaterial);
-                fin.rotation.y = Math.PI / 2;
-                fin.position.set(0, 0.6, -bodyLength / 2 + 0.2);
-                shipGroup.add(fin);
-            }
-            // Tipe Model 2: Pesawat Kargo/Berat (ID 15-34)
-            else if (id <= 34) {
-                const bodyWidth = 2.0 + (id % 5) * 0.1;
-                const bodyHeight = 1.0 + (id % 5) * 0.1;
-                const bodyLength = 5.0 + (id % 5) * 0.2;
-
-                const mainBody = new THREE.Mesh(new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyLength), bodyMaterial);
-                shipGroup.add(mainBody);
-
-                const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 1.5), cockpitMaterial);
-                cockpit.position.set(0, bodyHeight / 2, bodyLength / 2 - 0.5);
-                shipGroup.add(cockpit);
-
-                const wingGeo = new THREE.BoxGeometry(2.5, 0.2, 2.0);
-                const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
-                rightWing.position.set(bodyWidth / 2 + 1.25, 0, 0);
-                rightWing.rotation.z = -0.1;
-                shipGroup.add(rightWing);
-                const leftWing = new THREE.Mesh(wingGeo, wingMaterial);
-                leftWing.position.set(-(bodyWidth / 2 + 1.25), 0, 0);
-                leftWing.rotation.z = 0.1;
-                shipGroup.add(leftWing);
-
-                const engineGeo = new THREE.CylinderGeometry(0.4, 0.4, 2.5, 8);
-                const enginePositions = [
-                    new THREE.Vector3(bodyWidth / 2 + 1.0, 0, -1.5), new THREE.Vector3(-(bodyWidth / 2 + 1.0), 0, -1.5),
-                    new THREE.Vector3(bodyWidth / 2 - 0.5, -bodyHeight/2, -bodyLength/2), new THREE.Vector3(-(bodyWidth / 2 - 0.5), -bodyHeight/2, -bodyLength/2),
-                ];
-                enginePositions.forEach(pos => {
-                    const engine = new THREE.Mesh(engineGeo, wingMaterial);
-                    engine.rotation.x = Math.PI / 2;
-                    engine.position.copy(pos);
+                case 2: { // ID 12-17: Gunship
+                    const bodyLength = 5.0 + (id % 6) * 0.2;
+                    const wingSpan = 4.0 + (id % 6) * 0.3;
+                    const mainBodyGeo = new THREE.CylinderGeometry(0.9, 0.7, bodyLength, 8);
+                    const mainBody = new THREE.Mesh(mainBodyGeo, bodyMaterial);
+                    mainBody.rotation.x = Math.PI / 2;
+                    shipGroup.add(mainBody);
+                    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 2.0), cockpitMaterial);
+                    cockpit.position.set(0, 0.8, (bodyLength / 2) - 1.5);
+                    shipGroup.add(cockpit);
+                    const wingGeo = new THREE.BoxGeometry(wingSpan, 0.25, 1.8);
+                    const wings = new THREE.Mesh(wingGeo, wingMaterial);
+                    wings.position.z = -1.0;
+                    shipGroup.add(wings);
+                    const weaponPodGeo = new THREE.BoxGeometry(1.0, 0.8, 3.0);
+                    const rightPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
+                    rightPod.position.set(1.8, 0, 0.5);
+                    shipGroup.add(rightPod);
+                    const leftPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
+                    leftPod.position.set(-1.8, 0, 0.5);
+                    shipGroup.add(leftPod);
+                    const engineGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.0, 6);
+                    const enginePositions = [ new THREE.Vector3(1.2, 0.4, -bodyLength / 2), new THREE.Vector3(-1.2, 0.4, -bodyLength / 2), new THREE.Vector3(1.2, -0.4, -bodyLength / 2), new THREE.Vector3(-1.2, -0.4, -bodyLength / 2), ];
+                    enginePositions.forEach(pos => {
+                        const engine = new THREE.Mesh(engineGeo, bodyMaterial);
+                        engine.rotation.x = Math.PI / 2;
+                        engine.position.copy(pos);
+                        shipGroup.add(engine);
+                        const glow = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), engineGlowMaterial);
+                        glow.position.set(pos.x, pos.y, pos.z - 1.01);
+                        shipGroup.add(glow);
+                    });
+                    break;
+                }
+                case 3: { // ID 18-23: Heavy Cargo
+                    const bodyWidth = 2.5 + (id % 6) * 0.1;
+                    const bodyHeight = 1.2 + (id % 6) * 0.1;
+                    const bodyLength = 6.0 + (id % 6) * 0.2;
+                    const mainBody = new THREE.Mesh(new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyLength), bodyMaterial);
+                    shipGroup.add(mainBody);
+                    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 1.8), cockpitMaterial);
+                    cockpit.position.set(0, bodyHeight / 2, bodyLength / 2 - 0.6);
+                    shipGroup.add(cockpit);
+                    const wingGeo = new THREE.BoxGeometry(3.5, 0.2, 2.5);
+                    const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
+                    rightWing.position.set(bodyWidth / 2 + 1.75, 0, 0);
+                    rightWing.rotation.z = -0.1;
+                    shipGroup.add(rightWing);
+                    const leftWing = new THREE.Mesh(wingGeo, wingMaterial);
+                    leftWing.position.set(-(bodyWidth / 2 + 1.75), 0, 0);
+                    leftWing.rotation.z = 0.1;
+                    shipGroup.add(leftWing);
+                    const engineGeo = new THREE.CylinderGeometry(0.8, 0.9, 3.5, 8);
+                    const enginePositions = [new THREE.Vector3(bodyWidth / 2 + 1.2, -0.5, -0.5), new THREE.Vector3(-(bodyWidth / 2 + 1.2), -0.5, -0.5)];
+                    enginePositions.forEach(pos => {
+                        const engine = new THREE.Mesh(engineGeo, bodyMaterial);
+                        engine.rotation.x = Math.PI / 2;
+                        engine.position.copy(pos);
+                        shipGroup.add(engine);
+                        const glow = new THREE.Mesh(new THREE.CircleGeometry(0.7, 16), engineGlowMaterial);
+                        glow.position.set(pos.x, pos.y, pos.z - 1.76);
+                        shipGroup.add(glow);
+                    });
+                    break;
+                }
+                case 4: { // ID 24-29: High-Tech
+                    const mainColor = new THREE.Color(0xeeeeff);
+                    const accentColor = new THREE.Color(0x00aaff);
+                    const highTechBodyMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.9, roughness: 0.3 });
+                    const highTechAccentMat = new THREE.MeshStandardMaterial({ color: accentColor, metalness: 0.8, roughness: 0.4 });
+                    const bodyLength = 6 + (id % 6) * 0.2;
+                    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, bodyLength), highTechBodyMat);
+                    shipGroup.add(body);
+                    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 2.0), cockpitMaterial);
+                    cockpit.position.set(0, 0.2, bodyLength / 2 - 1.2);
+                    shipGroup.add(cockpit);
+                    const wingSpan = 4 + (id % 6) * 0.3;
+                    const wingShape = new THREE.Shape();
+                    wingShape.moveTo(0, 0); wingShape.lineTo(wingSpan, -1.5); wingShape.lineTo(wingSpan, -0.5); wingShape.lineTo(0, -2.0); wingShape.lineTo(0, 0);
+                    const wingExtrudeSettings = { depth: 0.15, bevelEnabled: false };
+                    const wingGeo = new THREE.ExtrudeGeometry(wingShape, wingExtrudeSettings);
+                    wingGeo.rotateX(-Math.PI / 2);
+                    const rightWing = new THREE.Mesh(wingGeo, highTechAccentMat);
+                    rightWing.position.set(0.75, 0, 0);
+                    shipGroup.add(rightWing);
+                    const leftWing = new THREE.Mesh(wingGeo.clone(), highTechAccentMat);
+                    leftWing.scale.x = -1;
+                    leftWing.position.set(-0.75, 0, 0);
+                    shipGroup.add(leftWing);
+                    const canardGeo = new THREE.BoxGeometry(1.5, 0.1, 0.8);
+                    const rightCanard = new THREE.Mesh(canardGeo, highTechAccentMat);
+                    rightCanard.position.set(1.5, 0.2, bodyLength / 2 - 2.5);
+                    shipGroup.add(rightCanard);
+                    const leftCanard = new THREE.Mesh(canardGeo, highTechAccentMat);
+                    leftCanard.position.set(-1.5, 0.2, bodyLength / 2 - 2.5);
+                    shipGroup.add(leftCanard);
+                    break;
+                }
+                case 5: { // ID 30-35: Asymmetrical/Scavenger
+                    const scrapMat1 = new THREE.MeshStandardMaterial({ color: 0x8B4513, metalness: 0.6, roughness: 0.8 });
+                    const scrapMat2 = new THREE.MeshStandardMaterial({ color: 0x606060, metalness: 0.9, roughness: 0.5 });
+                    const body1 = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 4), scrapMat1);
+                    body1.position.z = 2;
+                    shipGroup.add(body1);
+                    const body2 = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 4, 8), scrapMat2);
+                    body2.rotation.x = Math.PI / 2;
+                    shipGroup.add(body2);
+                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 6), cockpitMaterial);
+                    cockpit.position.set(-1.5, 0.5, 2);
+                    shipGroup.add(cockpit);
+                    const rightWing = new THREE.Mesh(new THREE.BoxGeometry(4, 0.2, 2), scrapMat1);
+                    rightWing.position.set(3, 0, 0);
+                    rightWing.rotation.z = -0.1;
+                    shipGroup.add(rightWing);
+                    const engine1 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 2), scrapMat2);
+                    engine1.position.set(0.8, 0, -3);
+                    shipGroup.add(engine1);
+                    const glow1 = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), engineGlowMaterial);
+                    glow1.position.set(0.8, 0, -4.01);
+                    shipGroup.add(glow1);
+                    break;
+                }
+                case 6: { // ID 36-41: Bio-Organic
+                    const bioMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x228B22), metalness: 0.1, roughness: 0.8 });
+                    const points = [];
+                    for (let i = 0; i < 10; i++) { points.push(new THREE.Vector2(Math.sin(i * 0.2) * 1.5 + 0.5, (i - 5) * 0.8)); }
+                    const bodyGeo = new THREE.LatheGeometry(points, 12);
+                    const body = new THREE.Mesh(bodyGeo, bioMat);
+                    body.rotation.x = Math.PI / 2;
+                    shipGroup.add(body);
+                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), cockpitMaterial);
+                    cockpit.position.set(0, 0.5, 3.5);
+                    shipGroup.add(cockpit);
+                    const finShape = new THREE.Shape();
+                    finShape.moveTo(0, 0); finShape.bezierCurveTo(2, 1, 3, -1, 0, -0.5);
+                    const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.2, bevelEnabled: false });
+                    const fin = new THREE.Mesh(finGeo, bioMat);
+                    fin.position.set(0.5, 0, 0);
+                    shipGroup.add(fin);
+                    const engine = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), bioMat);
+                    engine.position.set(0, 0, -4.5);
                     shipGroup.add(engine);
-                    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), engineGlowMaterial);
-                    glow.position.set(pos.x, pos.y, pos.z - 1.26);
-                    shipGroup.add(glow);
-                });
-
-                const finGeo = new THREE.BoxGeometry(0.15, 1.5, 1.2);
-                const rightFin = new THREE.Mesh(finGeo, wingMaterial);
-                rightFin.position.set(bodyWidth / 2 - 0.2, 0.75, -bodyLength / 2 + 0.6);
-                shipGroup.add(rightFin);
-                const leftFin = new THREE.Mesh(finGeo, wingMaterial);
-                leftFin.position.set(-(bodyWidth / 2 - 0.2), 0.75, -bodyLength / 2 + 0.6);
-                shipGroup.add(leftFin);
-            }
-            // Tipe Model 3: Pesawat Tempur Berat/Gunship (ID 35+)
-            else {
-                const bodyLength = 5.0 + ((id - 35) % 5) * 0.3; // Lebih besar dari fighter
-                const wingSpan = 4.0 + ((id - 35) % 5) * 0.4;
-
-                // Badan lebih lebar dan kokoh
-                const mainBodyGeo = new THREE.CylinderGeometry(0.9, 0.7, bodyLength, 8);
-                const mainBody = new THREE.Mesh(mainBodyGeo, bodyMaterial);
-                mainBody.rotation.x = Math.PI / 2;
-                shipGroup.add(mainBody);
-
-                const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 2.0), cockpitMaterial);
-                cockpit.position.set(0, 0.8, (bodyLength / 2) - 1.5);
-                shipGroup.add(cockpit);
-
-                // Sayap kecil dan tebal
-                const wingGeo = new THREE.BoxGeometry(wingSpan, 0.25, 1.8);
-                const wings = new THREE.Mesh(wingGeo, wingMaterial);
-                wings.position.z = -1.0;
-                shipGroup.add(wings);
-
-                // Pod senjata di samping
-                const weaponPodGeo = new THREE.BoxGeometry(1.0, 0.8, 3.0);
-                const rightPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
-                rightPod.position.set(1.8, 0, 0.5);
-                shipGroup.add(rightPod);
-                const leftPod = new THREE.Mesh(weaponPodGeo, bodyMaterial);
-                leftPod.position.set(-1.8, 0, 0.5);
-                shipGroup.add(leftPod);
-
-                // Empat mesin
-                const engineGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.0, 6);
-                const enginePositions = [
-                    new THREE.Vector3(1.2, 0.4, -bodyLength / 2),
-                    new THREE.Vector3(-1.2, 0.4, -bodyLength / 2),
-                    new THREE.Vector3(1.2, -0.4, -bodyLength / 2),
-                    new THREE.Vector3(-1.2, -0.4, -bodyLength / 2),
-                ];
-                enginePositions.forEach(pos => {
-                    const engine = new THREE.Mesh(engineGeo, bodyMaterial);
-                    engine.rotation.x = Math.PI / 2;
-                    engine.position.copy(pos);
-                    shipGroup.add(engine);
-                    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), engineGlowMaterial);
-                    glow.position.set(pos.x, pos.y, pos.z - 1.01);
-                    shipGroup.add(glow);
-                });
-
-                // Sirip ekor ganda
-                const finGeo = new THREE.BoxGeometry(0.2, 1.2, 1.2);
-                const rightFin = new THREE.Mesh(finGeo, wingMaterial);
-                rightFin.position.set(1.5, 0, -bodyLength / 2 + 0.6);
-                rightFin.rotation.z = -0.25;
-                shipGroup.add(rightFin);
-                const leftFin = new THREE.Mesh(finGeo, wingMaterial);
-                leftFin.position.set(-1.5, 0, -bodyLength / 2 + 0.6);
-                leftFin.rotation.z = 0.25;
-                shipGroup.add(leftFin);
+                    break;
+                }
+                case 7: { // ID 42-47: Stealth
+                    const stealthMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.9, flatShading: true });
+                    const mainBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 7), stealthMat);
+                    shipGroup.add(mainBody);
+                    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2, 4), stealthMat);
+                    nose.rotation.x = Math.PI / 2;
+                    nose.position.z = 4.5;
+                    shipGroup.add(nose);
+                    const wingShape = new THREE.Shape();
+                    wingShape.moveTo(0, 0); wingShape.lineTo(4, -2.5); wingShape.lineTo(0, -3.5); wingShape.lineTo(0, 0);
+                    const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.1, bevelEnabled: false });
+                    wingGeo.rotateX(-Math.PI / 2);
+                    const rightWing = new THREE.Mesh(wingGeo, stealthMat);
+                    rightWing.position.set(0.75, 0, 1);
+                    shipGroup.add(rightWing);
+                    const leftWing = new THREE.Mesh(wingGeo.clone(), stealthMat);
+                    leftWing.scale.x = -1;
+                    leftWing.position.set(-0.75, 0, 1);
+                    shipGroup.add(leftWing);
+                    const stealthGlowMat = new THREE.MeshBasicMaterial({ color: 0x0055ff, toneMapped: false });
+                    const engineGlow = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.1), stealthGlowMat);
+                    engineGlow.position.set(0, 0, -3.55);
+                    shipGroup.add(engineGlow);
+                    break;
+                }
+                default: { // ID 48+: Exotic
+                    const mainColor = new THREE.Color().setHSL((id % 18) / 18, 0.7, 0.5);
+                    const accentColor = new THREE.Color().setHSL(((id + 5) % 18) / 18, 0.7, 0.6);
+                    const exoticBodyMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.5, roughness: 0.8 });
+                    const exoticWingMat = new THREE.MeshStandardMaterial({ color: accentColor, metalness: 0.9, roughness: 0.4 });
+                    const exoticGlowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(((id + 10) % 18) / 18, 1.0, 0.7), toneMapped: false });
+                    const body = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 6), exoticBodyMat);
+                    body.rotation.z = Math.PI / 2;
+                    shipGroup.add(body);
+                    const wingShape1 = new THREE.Shape();
+                    wingShape1.moveTo(0,0); wingShape1.lineTo(5, 2); wingShape1.lineTo(4, -1); wingShape1.lineTo(0,-0.5);
+                    const rightWing = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape1, { depth: 0.2, bevelEnabled: false }), exoticWingMat);
+                    rightWing.position.set(0, 0.5, 0);
+                    rightWing.rotation.x = -0.2;
+                    shipGroup.add(rightWing);
+                    const wingShape2 = new THREE.Shape();
+                    wingShape2.moveTo(0,0); wingShape2.lineTo(-4, 1); wingShape2.lineTo(-3, -2); wingShape2.lineTo(0,-0.5);
+                    const leftWing = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape2, { depth: 0.2, bevelEnabled: false }), exoticWingMat);
+                    leftWing.position.set(0, -0.5, 0.5);
+                    leftWing.rotation.x = 0.2;
+                    shipGroup.add(leftWing);
+                    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), cockpitMaterial);
+                    cockpit.position.set(0, 0, 1);
+                    shipGroup.add(cockpit);
+                    const enginePositions = [ new THREE.Vector3(2, 0, -2), new THREE.Vector3(-1.5, 1, -2.5), new THREE.Vector3(-1.5, -1, -2.5) ];
+                    enginePositions.forEach(pos => {
+                        const engine = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), exoticBodyMat);
+                        engine.position.copy(pos);
+                        shipGroup.add(engine);
+                        const glow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), exoticGlowMat);
+                        glow.position.set(pos.x, pos.y, pos.z - 0.01);
+                        glow.lookAt(shipGroup.position);
+                        shipGroup.add(glow);
+                    });
+                    break;
+                }
             }
 
             // Penyesuaian akhir untuk semua model
