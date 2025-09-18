@@ -280,7 +280,7 @@
     <div id="info">
         <h1>Misi: <span id="mission-title">Jupiter</span></h1>
         <p>Tugas: Capai target, hancurkan asteroid!</p>
-        <p><b>Kontrol:</b> W/S (Maju/Mundur), Panah (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
+        <p><b>Kontrol:</b> W/S (Maju/Mundur), Home/End (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
         <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>        
         <p><b>Klik Kiri:</b> Fokus Target Sword Sensor</p>
         <p id="distance-info">Jarak ke Target: ...</p>
@@ -386,6 +386,19 @@
         let cameraMode = 0; // 0: Belakang, 1: Depan, 2: Kokpit
         const cameraModes = ['Belakang', 'Depan', 'Kokpit'];
 
+        const sounds = {
+            collision: new Audio('https://actions.google.com/sounds/v1/explosions/explosion_with_rumble.ogg'),
+            damage: new Audio('https://actions.google.com/sounds/v1/impacts/hit_and_whistle.ogg'),
+            boost: new Audio('https://actions.google.com/sounds/v1/transportation/rocket_launch.ogg')
+        };
+        function playSound(sound) {
+            if (!sound || playerData.settings.isMuted || playerData.settings.soundVolume === 0) return;
+            sound.currentTime = 0;
+            sound.play().catch(error => {
+                console.warn(`Could not play sound: ${error}`);
+            });
+        }
+
         // Sistem Health, Bahan Bakar, dll
         let maxHealth = 100, currentHealth = maxHealth;
         let maxFuel = 100, currentFuel = maxFuel;
@@ -418,8 +431,8 @@
                 keys: {
                     forward: 'w',
                     backward: 's',
-                    turnLeft: 'arrowleft',
-                    turnRight: 'arrowright',
+                    turnLeft: 'home',
+                    turnRight: 'end',
                     ascend: 'pageup',
                     descend: 'pagedown',
                     fire: ' ',
@@ -431,6 +444,8 @@
                 autoFire: false,
                 cameraShake: true,
                 uiTextSize: 1.0,
+                isMuted: false,
+                soundVolume: 1.0,
                 missionNotification: 'popup',
                 mouseSensitivity: 1.0,
                 joystickSensitivity: 1.0
@@ -552,7 +567,15 @@
         function applySettings() {
             // Terapkan pengaturan yang memengaruhi CSS atau state awal
             document.documentElement.style.setProperty('--ui-scale', playerData.settings.uiTextSize);
+            applySoundSettings();
         }
+        function applySoundSettings() {
+            const volume = playerData.settings.isMuted ? 0 : playerData.settings.soundVolume;
+            for (const key in sounds) {
+                sounds[key].volume = volume;
+            }
+        }
+
         function populateDifficultyButtons() {
             const grid = document.getElementById('difficulty-grid');
             grid.innerHTML = '';
@@ -566,7 +589,7 @@
         function showMainMenu() {
             const startScreen = document.getElementById('start-screen');
             startScreen.style.display = 'flex';
-            startScreen.innerHTML = `
+            startScreen.innerHTML = `s
                 <h2>PENJELAJAH LUAR ANGKASA</h2>
                 <button onclick="showDifficultyMenu()">PLAY</button>
                 <button onclick="showHangar()">HANGAR</button>
@@ -886,6 +909,38 @@
                 notifContainer.appendChild(btn);
             });
             createRow(gameplayCard, 'Notifikasi Misi', notifContainer);
+
+            // --- KARTU AUDIO ---
+            const audioCard = createCard('Audio');
+
+            const muteBtn = document.createElement('button');
+            muteBtn.textContent = playerData.settings.isMuted ? 'OFF' : 'ON';
+            muteBtn.onclick = () => {
+                playerData.settings.isMuted = !playerData.settings.isMuted;
+                // Jika pengguna menyalakan suara kembali dan volume 0, set ke 100%
+                if (!playerData.settings.isMuted && playerData.settings.soundVolume === 0) {
+                    playerData.settings.soundVolume = 1.0;
+                }
+                savePlayerData();
+                populateSettingsGrid();
+            };
+            createRow(audioCard, 'Suara', muteBtn);
+
+            const volumeSlider = document.createElement('input');
+            volumeSlider.type = 'range';
+            volumeSlider.min = 0; volumeSlider.max = 1; volumeSlider.step = 0.1;
+            volumeSlider.value = playerData.settings.soundVolume;
+            volumeSlider.disabled = playerData.settings.isMuted;
+            volumeSlider.oninput = (e) => { 
+                playerData.settings.soundVolume = parseFloat(e.target.value); 
+                if (playerData.settings.soundVolume > 0 && playerData.settings.isMuted) {
+                    playerData.settings.isMuted = false;
+                    populateSettingsGrid();
+                }
+                applySoundSettings(); 
+            };
+            volumeSlider.onchange = () => savePlayerData();
+            createRow(audioCard, 'Volume Suara', volumeSlider);
         }
 
         function toggleFullscreen() {
@@ -1998,6 +2053,7 @@
                 setTimeout(() => shieldActive = false, (14 + level) * 1000);
             } else if (key === keys.speedBoost && playerData.accessories.speed.level > 0 && now > accessoryCooldowns.speed) {
                  const level = playerData.accessories.speed.level;
+                playSound(sounds.boost);
                 speedBoostActive = true;
                 accessoryCooldowns.speed = now + (50 - level) * 1000;
                 setTimeout(() => speedBoostActive = false, (11 + level) * 1000);
@@ -2016,6 +2072,7 @@
         function takeDamage(amount) {
             if (isGameOver || shieldActive) return;
             currentHealth -= amount;
+            playSound(sounds.damage);
             shakeCamera(0.4, 250);
             if (currentHealth <= 0) {
                 currentHealth = 0;
@@ -2033,6 +2090,7 @@
              for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
                  if (shipGroup.position.distanceTo(asteroid.position) < (asteroid.scale.x || 30) + 4) { // Radius tabrakan pesawat disesuaikan
+                    playSound(sounds.collision);
                     shakeCamera(0.8, 400);
                     takeDamage(20); // Kerusakan akibat tabrakan
                     damageAsteroid(asteroid, 1000); // collision instantly destroys it
