@@ -589,8 +589,7 @@
         function showMainMenu() {
             const startScreen = document.getElementById('start-screen');
             startScreen.style.display = 'flex';
-            startScreen.innerHTML = `s
-                <h2>PENJELAJAH LUAR ANGKASA</h2>
+            startScreen.innerHTML = `<h2>PENJELAJAH LUAR ANGKASA</h2>
                 <button onclick="showDifficultyMenu()">PLAY</button>
                 <button onclick="showHangar()">HANGAR</button>
                 <button onclick="showHangar('settings-content')">PENGATURAN</button>
@@ -2207,7 +2206,6 @@
             lastTime = currentTime;
             if (isGameStarted && !isPaused) {
                 updateShipMovement(deltaTime);
-                if (playerData.settings.autoFire) {
                 if (playerData.settings.autoFire || keyboard[playerData.settings.keys.fire]) {
                     fireProjectile();
                 }
@@ -2236,7 +2234,6 @@
                     camera.position.lerp(cameraOffset, 0.1);
                     camera.lookAt(shipGroup.position);
                 }
-                // Untuk mode 2 (kokpit), tidak ada logic di sini karena kamera sudah menjadi child dari shipGroup.
             }
             renderer.render(scene, camera);
         }
@@ -2327,7 +2324,6 @@
             });
         }
         function fireProjectile() {
-            if (isFrozen || isPaused || isGameOver || !shipGroup || (keyboard[playerData.settings.keys.fire] && !playerData.settings.autoFire)) return;
             if (isFrozen || isPaused || isGameOver || !shipGroup) return;
 
             // Cooldown untuk mencegah spam
@@ -2493,7 +2489,86 @@
                 networkIndicator.classList.add('bad');
             }
         }
-        function setupJoystick() { /* Logika joystick dari kode lama */ }
+        function setupJoystick() {
+            const joystickArea = document.getElementById('joystick-area');
+            const joystickThumb = document.getElementById('joystick-thumb');
+            const fireButton = document.getElementById('fire-button');
+            const mobileControls = document.getElementById('mobile-controls');
+
+            // Cek apakah ini perangkat sentuh
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (!isTouchDevice) {
+                // CSS sudah menyembunyikan kontrol secara default, jadi tidak perlu aksi
+                return;
+            }
+            // Tampilkan kontrol jika ini perangkat sentuh (menggantikan aturan CSS)
+            // Media query di CSS akan tetap berfungsi sebagai fallback
+
+            let joystickActive = false;
+            let joystickStartPos = { x: 0, y: 0 };
+            let joystickCurrentPos = { x: 0, y: 0 };
+            const joystickRadius = joystickArea.offsetWidth / 2;
+            const keys = playerData.settings.keys;
+
+            const handleTouchStart = (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                const touch = e.touches[0];
+                joystickStartPos = { x: touch.clientX, y: touch.clientY };
+            };
+
+            const handleTouchMove = (e) => {
+                e.preventDefault();
+                if (!joystickActive) return;
+                const touch = e.touches[0];
+                joystickCurrentPos = { x: touch.clientX, y: touch.clientY };
+
+                let dx = joystickCurrentPos.x - joystickStartPos.x;
+                let dy = joystickCurrentPos.y - joystickStartPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Batasi pergerakan thumb di dalam area joystick
+                if (distance > joystickRadius) {
+                    dx = (dx / distance) * joystickRadius;
+                    dy = (dy / distance) * joystickRadius;
+                }
+                
+                joystickThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+                const sensitivity = playerData.settings.joystickSensitivity || 1.0;
+                const deadZone = 0.2; // Area di tengah joystick yang tidak merespons
+
+                // Terjemahkan gerakan vertikal ke maju/mundur
+                const verticalInput = -dy / joystickRadius * sensitivity;
+                keyboard[keys.forward] = verticalInput > deadZone;
+                keyboard[keys.backward] = verticalInput < -deadZone;
+
+                // Terjemahkan gerakan horizontal ke belok kiri/kanan
+                const horizontalInput = dx / joystickRadius * sensitivity;
+                keyboard[keys.turnRight] = horizontalInput > deadZone;
+                keyboard[keys.turnLeft] = horizontalInput < -deadZone;
+            };
+
+            const resetJoystick = (e) => {
+                if(e) e.preventDefault();
+                joystickActive = false;
+                joystickThumb.style.transform = 'translate(-50%, -50%)';
+                // Reset semua tombol yang dikontrol joystick
+                keyboard[keys.forward] = false;
+                keyboard[keys.backward] = false;
+                keyboard[keys.turnLeft] = false;
+                keyboard[keys.turnRight] = false;
+            };
+
+            joystickArea.addEventListener('touchstart', handleTouchStart, { passive: false });
+            joystickArea.addEventListener('touchmove', handleTouchMove, { passive: false });
+            joystickArea.addEventListener('touchend', resetJoystick, { passive: false });
+            joystickArea.addEventListener('touchcancel', resetJoystick, { passive: false });
+
+            // Logika untuk tombol tembak
+            fireButton.addEventListener('touchstart', (e) => { e.preventDefault(); keyboard[keys.fire] = true; }, { passive: false });
+            fireButton.addEventListener('touchend', (e) => { e.preventDefault(); keyboard[keys.fire] = false; }, { passive: false });
+        }
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }, false);
         init();
     </script>
