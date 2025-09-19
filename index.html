@@ -1706,7 +1706,7 @@
                         target.health -= swordDamage;
                         if (target.health <= 0) {
                             const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
-                            playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
+                            playerData.points += Math.round(5000 * pointMultiplier); savePlayerData();
                             scene.remove(target);
                             const index = aliens.indexOf(target);
                             if (index > -1) aliens.splice(index, 1);
@@ -1782,7 +1782,7 @@
                             target.health -= swordDamage;
                             if (target.health <= 0) {
                                 const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
-                                playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
+                                playerData.points += Math.round(5000 * pointMultiplier); savePlayerData();
                                 scene.remove(target);
                                 const index = aliens.indexOf(target);
                                 if (index > -1) aliens.splice(index, 1);
@@ -1797,14 +1797,56 @@
         // --- FUNGSI ALIEN & METEOR BEKU ---
         function createAlienShip(position) {
             const alienGroup = new THREE.Group();
-            const saucerMaterial = new THREE.MeshPhongMaterial({ color: 0x9400D3, flatShading: true });
-            const saucerBodyGeo = new THREE.CylinderGeometry(10, 10, 2, 16);
-            const saucerBody = new THREE.Mesh(saucerBodyGeo, saucerMaterial);
-            alienGroup.add(saucerBody);
-            const domeGeo = new THREE.SphereGeometry(5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-            const dome = new THREE.Mesh(domeGeo, saucerMaterial);
-            dome.position.y = 1;
-            alienGroup.add(dome);
+            
+            // Material baru untuk kapal alien yang lebih agresif
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0x3d004d, // Ungu sangat gelap
+                metalness: 0.8,
+                roughness: 0.6,
+                flatShading: true
+            });
+            const wingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2e0038, // Ungu lebih gelap lagi
+                metalness: 0.9,
+                roughness: 0.4,
+                flatShading: true
+            });
+            const cockpitMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff00ff, // Magenta terang
+                emissive: 0xcc00cc,
+                emissiveIntensity: 0.8,
+                metalness: 0.1,
+                roughness: 0.2,
+            });
+
+            // Badan utama yang ramping dan panjang
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 12), bodyMaterial);
+            alienGroup.add(body);
+
+            // Kokpit berbentuk kerucut tajam
+            const cockpit = new THREE.Mesh(new THREE.ConeGeometry(1, 3, 4), cockpitMaterial);
+            cockpit.rotation.x = Math.PI / 2;
+            cockpit.position.z = 7; // Posisikan di depan badan
+            alienGroup.add(cockpit);
+
+            // Sayap yang menyapu ke belakang (agresif)
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0); wingShape.lineTo(6, 1); wingShape.lineTo(5, -1); wingShape.lineTo(0, -1.5); wingShape.lineTo(0, 0);
+            const extrudeSettings = { depth: 0.3, bevelEnabled: false };
+            const wingGeo = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
+            wingGeo.rotateX(-Math.PI / 2);
+            const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
+            rightWing.position.set(1, 0, -2); // Posisikan di samping badan
+            alienGroup.add(rightWing);
+            const leftWing = new THREE.Mesh(wingGeo.clone(), wingMaterial);
+            leftWing.scale.x = -1; // Cerminkan sayap kiri
+            leftWing.position.set(-1, 0, -2);
+            alienGroup.add(leftWing);
+            // Mesin di bagian belakang
+            const engineGlowMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, toneMapped: false });
+            const engineGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1), engineGlowMaterial);
+            engineGlow.position.z = -6.1; // Tepat di belakang badan
+            alienGroup.add(engineGlow);
             alienGroup.position.copy(position);
             alienGroup.health = 23;
             alienGroup.lastFireTime = 0;
@@ -1995,7 +2037,7 @@
 
         function updateAliens(deltaTime) {
             if (!shipGroup) return;
-            const alienSpeed = 10;
+            const alienSpeed = 18;
             const fireCooldown = 2000;
 
             for (let i = aliens.length - 1; i >= 0; i--) {
@@ -2119,7 +2161,7 @@
                          if (alien.health <= 0) {
                             scene.remove(alien); aliens.splice(k, 1);
                             const pointMultiplier = 1 + (playerData.accessories.pointBooster.level * 0.4);
-                            playerData.points += Math.round(50 * pointMultiplier); savePlayerData();
+                            playerData.points += Math.round(5000 * pointMultiplier); savePlayerData();
                         }
                         if (!laser.isPiercing) { scene.remove(laser); lasers.splice(i, 1); break; }
                     }
