@@ -280,7 +280,7 @@
     <div id="info">
         <h1>Misi: <span id="mission-title">Jupiter</span></h1>
         <p>Tugas: Capai target, hancurkan asteroid!</p>
-        <p><b>Kontrol:</b> W/S (Maju/Mundur), Home/End (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
+        <p><b>Kontrol:</b> W/S (Maju/Mundur), A/D (Belok), PgUp/PgDn (Atas/Bawah), Spasi (Tembak)</p>
         <p><b>Aksesoris:</b> 1-Shield, 2-Speed, 3-Warmth</p>        
         <p><b>Klik Kiri:</b> Fokus Target Sword Sensor</p>
         <p id="distance-info">Jarak ke Target: ...</p>
@@ -431,8 +431,8 @@
                 keys: {
                     forward: 'w',
                     backward: 's',
-                    turnLeft: 'home',
-                    turnRight: 'end',
+                    turnLeft: 'a',
+                    turnRight: 'd',
                     ascend: 'pageup',
                     descend: 'pagedown',
                     fire: ' ',
@@ -2208,6 +2208,7 @@
             if (isGameStarted && !isPaused) {
                 updateShipMovement(deltaTime);
                 if (playerData.settings.autoFire) {
+                if (playerData.settings.autoFire || keyboard[playerData.settings.keys.fire]) {
                     fireProjectile();
                 }
                 updateLasers();
@@ -2327,6 +2328,7 @@
         }
         function fireProjectile() {
             if (isFrozen || isPaused || isGameOver || !shipGroup || (keyboard[playerData.settings.keys.fire] && !playerData.settings.autoFire)) return;
+            if (isFrozen || isPaused || isGameOver || !shipGroup) return;
 
             // Cooldown untuk mencegah spam
             const now = Date.now();
