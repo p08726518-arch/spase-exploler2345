@@ -224,12 +224,10 @@
         #settings-content .setting-row button, #settings-content .setting-row .key-display { min-width: 120px; font-size: calc(0.9em * var(--ui-scale)); padding: 8px; }
         #settings-content .key-display { background-color: var(--dark-bg); border: 1px solid #777; text-align: center; display: inline-block; }
         #settings-content input[type="range"] { width: 150px; }
-        #mobile-controls { display: none; position: absolute; bottom: 20px; left: 20px; z-index: 300; flex-direction: row; justify-content: space-between; width: calc(100% - 40px); }
-        #joystick-area, #fire-button { background-color: rgba(50, 50, 50, 0.7); border: 2px solid #888; border-radius: 50%; }
+        #mobile-controls { display: none; position: absolute; bottom: 20px; left: 20px; z-index: 300; }
+        #joystick-area { background-color: rgba(50, 50, 50, 0.7); border: 2px solid #888; border-radius: 50%; }
         #joystick-area { width: 150px; height: 150px; position: relative; }
         #joystick-thumb { width: 60px; height: 60px; background-color: #eee; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        #fire-button { width: 100px; height: 100px; background-color: rgba(255, 0, 0, 0.7); border: 2px solid #ff0000; display: flex; justify-content: center; align-items: center; font-size: 1.5em; }
-        @media (max-width: 768px) { #mobile-controls { display: flex; } }
         .camera-controls-container {
             position: absolute;
             top: 10px;
@@ -364,13 +362,14 @@
         <button id="cam-btn-depan" class="camera-btn" onclick="setCameraMode(1)">Depan</button>
         <button id="cam-btn-kokpit" class="camera-btn" onclick="setCameraMode(2)">Kokpit</button>
     </div>
-    <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div><div id="fire-button">TEMBAK</div></div>
+    <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // Inisialisasi Three.js
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x000000, 0.00002); // Kepadatan fog dikurangi agar planet terlihat
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50000000); // FOV diperkecil dari 75
+        const initialFov = 50;
+        const camera = new THREE.PerspectiveCamera(initialFov, window.innerWidth / window.innerHeight, 0.1, 50000000); // FOV diperkecil dari 75
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -563,6 +562,7 @@
             window.addEventListener('mousedown', onMouseDown, false);
             checkPing(); // Cek ping saat pertama kali load
             setInterval(checkPing, 5000); // Cek ping setiap 5 detik
+            onWindowResize(); // Panggil untuk mengatur FOV awal dengan benar
         }
         function applySettings() {
             // Terapkan pengaturan yang memengaruhi CSS atau state awal
@@ -589,6 +589,7 @@
         function showMainMenu() {
             const startScreen = document.getElementById('start-screen');
             startScreen.style.display = 'flex';
+            document.getElementById('mobile-controls').style.display = 'none';
             startScreen.innerHTML = `<h2>PENJELAJAH LUAR ANGKASA</h2>
                 <button onclick="showDifficultyMenu()">PLAY</button>
                 <button onclick="showHangar()">HANGAR</button>
@@ -612,6 +613,12 @@
         }
         function startGame() {
             isGameStarted = true;
+
+            // Tampilkan kontrol mobile hanya jika ini perangkat sentuh
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (isTouchDevice) {
+                document.getElementById('mobile-controls').style.display = 'flex';
+            }
             // Hapus teman dari game sebelumnya
             friends.forEach(f => scene.remove(f.shipGroup));
             friends.length = 0;
@@ -2120,6 +2127,7 @@
                 isGameOver = true;
                 document.getElementById('game-over-reason').innerText = 'Pesawat Anda hancur!';
                 document.getElementById('game-over-screen').style.display = 'flex';
+                document.getElementById('mobile-controls').style.display = 'none';
             }
         }
         function checkCollisions() {
@@ -2216,6 +2224,7 @@
                     isGameOver = true; isPaused = true;
                     document.getElementById('win-screen').style.display = 'flex';
                     document.getElementById('win-message').innerText = `SELAMAT! Anda telah menjelajahi seluruh alam semesta! Bonus Akhir: ${pointsWon.toLocaleString()} poin.`;
+                    document.getElementById('mobile-controls').style.display = 'none';
                 } else {
                     currentMissionIndex++;
                     scene.remove(target.object);
@@ -2534,7 +2543,6 @@
         function setupJoystick() {
             const joystickArea = document.getElementById('joystick-area');
             const joystickThumb = document.getElementById('joystick-thumb');
-            const fireButton = document.getElementById('fire-button');
             const mobileControls = document.getElementById('mobile-controls');
 
             // Cek apakah ini perangkat sentuh
@@ -2607,11 +2615,28 @@
             joystickArea.addEventListener('touchend', resetJoystick, { passive: false });
             joystickArea.addEventListener('touchcancel', resetJoystick, { passive: false });
 
-            // Logika untuk tombol tembak
-            fireButton.addEventListener('touchstart', (e) => { e.preventDefault(); keyboard[keys.fire] = true; }, { passive: false });
-            fireButton.addEventListener('touchend', (e) => { e.preventDefault(); keyboard[keys.fire] = false; }, { passive: false });
         }
-        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }, false);
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const referenceAspect = 16 / 9; // Aspek rasio desain (widescreen)
+
+            // Logika ini menyesuaikan Field of View (FOV) vertikal
+            // untuk menjaga agar FOV horizontal tetap konsisten, terutama di layar potret (HP).
+            // Ini mencegah tampilan menjadi terlalu "ter-zoom" dan sempit di HP.
+            if (aspect < referenceAspect) {
+                // Layar lebih "tinggi" dari referensi, kita perlebar FOV vertikal
+                const newFov = 2 * Math.atan(Math.tan(initialFov * Math.PI / 180 / 2) * (referenceAspect / aspect)) * 180 / Math.PI;
+                camera.fov = newFov;
+            } else {
+                // Layar lebih "lebar" atau sama dengan referensi, gunakan FOV awal
+                camera.fov = initialFov;
+            }
+
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        window.addEventListener('resize', onWindowResize, false);
         init();
     </script>
 </body>
